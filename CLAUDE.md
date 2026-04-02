@@ -70,7 +70,7 @@ make deploy-dry        # Preview deploy without applying
   - [x] README updated with setup instructions and full target structure
   - [x] Structured logging with PII redaction filter
   - [x] Live agent connection test — PASSED
-- ISSUE-02: Agent Persona & Base Conversation Flow — IN PROGRESS
+- ISSUE-02: Agent Persona & Base Conversation Flow — COMPLETE
   - [x] System prompts v1.0 (TR + EN) with 7 intents, guardrails, out-of-scope handling
   - [x] Prompt loader with version management
   - [x] Conversation flow design — state diagram, intent routing, auth flow, out-of-scope handling
@@ -78,8 +78,7 @@ make deploy-dry        # Preview deploy without applying
   - [x] Intent detection tests — 11 simulated scenarios (7 intents + EN + out-of-scope + guardrail + multi-intent), all passing
   - [x] EN agent deployed and verified
   - [x] Transcript visibility in test output
-- ISSUE-02: COMPLETE
-- ISSUE-03: Multilingual Voice Support (Turkish + English) — IN PROGRESS
+- ISSUE-03: Multilingual Voice Support (Turkish + English) — COMPLETE
   - [x] Deploy script refactored for single multilingual agent with language_presets
   - [x] Language detection system tool enabled
   - [x] EN language preset with first message override
@@ -87,3 +86,6 @@ make deploy-dry        # Preview deploy without applying
   - [x] Conversation flow docs updated with language management section
   - [x] issues.md updated
 - ISSUE-03: COMPLETE
+- ISSUE-04: Caller Identity Verification Flow Design — IN PROGRESS
+  - [x] Auth flow design doc — workflow-based deterministic auth, KVKK compliance, security boundaries
+  - [x] TC Kimlik checksum validator with masking utility (13 tests passing)
