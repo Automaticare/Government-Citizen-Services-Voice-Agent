@@ -76,6 +76,6 @@ class TestLiveAgentConnection:
         client = ElevenLabs(api_key=config.api_key)
 
         # Fetch agent details — will raise if agent doesn't exist
-        agent = client.conversational_ai.get_agent(config.agent_id)
+        agent = client.conversational_ai.agents.get(agent_id=config.agent_id)
         assert agent is not None
         print(f"Agent found: {agent.name}")

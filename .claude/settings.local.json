@@ -6,7 +6,9 @@
       "WebFetch(domain:github.com)",
       "Bash(python -m pytest tests/test_agent_connection.py -v)",
       "Bash(pip install:*)",
-      "Bash(python -m pytest tests/test_logging.py -v)"
+      "Bash(python -m pytest tests/test_logging.py -v)",
+      "Bash(python -c \"from elevenlabs.client import ElevenLabs; print\\([m for m in dir\\(ElevenLabs\\(\\).conversational_ai\\) if not m.startswith\\('_'\\)]\\)\")",
+      "Bash(python -c \"from elevenlabs.client import ElevenLabs; print\\([m for m in dir\\(ElevenLabs\\(\\).conversational_ai.agents\\) if not m.startswith\\('_'\\)]\\)\")"
     ]
   }
 }
