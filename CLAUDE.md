@@ -56,3 +56,4 @@ python -m agent.conversation
   - [x] CLAUDE.md, .gitignore, .env.example
   - [x] Project folder structure + requirements.txt
   - [x] ElevenLabs agent config + conversation manager
+  - [x] Agent connection tests (unit + live)
