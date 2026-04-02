@@ -57,9 +57,13 @@ def check_pending_intents(state: AgentState) -> Literal["intent_classify", "__en
     return "__end__"
 
 
-def build_graph() -> StateGraph:
-    """Build and return the compiled LangGraph agent."""
+def build_graph(checkpointer=None):
+    """Build and return the compiled LangGraph agent.
 
+    Args:
+        checkpointer: Optional checkpointer for state persistence.
+                      Pass MemorySaver() for demo, PostgresSaver for production.
+    """
     builder = StateGraph(AgentState)
 
     # --- Add nodes ---
@@ -73,22 +77,16 @@ def build_graph() -> StateGraph:
     builder.add_node("escalate", escalate)
 
     # --- Add edges ---
-    # Entry: always start with intent classification
     builder.add_edge(START, "intent_classify")
-
-    # Intent classify → service router
     builder.add_edge("intent_classify", "service_router")
-
-    # Service router → conditional routing based on intent
     builder.add_conditional_edges("service_router", route_by_intent)
 
-    # Each service node → check if more intents pending
     for node in ["status_check", "appointment_book", "document_request",
                  "faq_answer", "complaint", "escalate"]:
         builder.add_conditional_edges(node, check_pending_intents)
 
-    return builder.compile()
+    return builder.compile(checkpointer=checkpointer)
 
 
-# Singleton compiled graph
+# Default graph without checkpointer (for testing / direct invocation)
 graph = build_graph()

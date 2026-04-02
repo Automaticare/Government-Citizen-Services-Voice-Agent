@@ -115,3 +115,4 @@ make deploy-dry        # Preview deploy without applying
   - [x] State schema (AgentState TypedDict) — messages, auth, intent, completed_intents, prompt_version
   - [x] Graph skeleton — 8 nodes, conditional routing by intent, pending intent check
   - [x] Node implementations — LLM intent classification, deterministic tool chaining (status→docs), all 7 service nodes
+  - [x] Custom LLM proxy — FastAPI `/v1/chat/completions` SSE endpoint, MemorySaver checkpointer, conversation_id-based state persistence
