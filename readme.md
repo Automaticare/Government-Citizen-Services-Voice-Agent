@@ -200,11 +200,8 @@ cp .env.example .env
 ### Run
 
 ```bash
-# Test a voice conversation (requires microphone + speaker)
-python -m agent.conversation
-
-# Start the Custom LLM server
-uvicorn api.server:app --reload --port 8000
+# Start the Custom LLM server (LangGraph proxy for ElevenLabs)
+uvicorn agent.server:app --reload --port 8000
 
 # Start the Mock Government API
 uvicorn api.government:app --reload --port 8001
@@ -222,7 +219,6 @@ python -m pytest tests/ -v
 Government-Citizen-Services-Voice-Agent/
 ├── agent/
 │   ├── config.py              # Agent configuration (AgentConfig dataclass)
-│   ├── conversation.py        # ElevenLabs conversation session manager
 │   ├── graph.py               # LangGraph workflow definition
 │   ├── state.py               # LangGraph state schema
 │   ├── nodes/                 # Individual graph nodes

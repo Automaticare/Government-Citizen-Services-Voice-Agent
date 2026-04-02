@@ -47,15 +47,18 @@ class TestAgentConfig:
         assert config.max_auth_attempts == 3
 
 
-class TestConversationCreation:
-    """Test conversation factory function."""
+class TestCustomLLMConfig:
+    """Test Custom LLM URL configuration."""
 
-    def test_raises_on_invalid_config(self):
-        from agent.conversation import create_conversation
+    def test_custom_llm_url_from_env(self):
+        with patch.dict(os.environ, {"CUSTOM_LLM_URL": "https://test.ngrok.app"}):
+            config = AgentConfig(api_key="test", agent_id="test")
+            assert config.custom_llm_url == "https://test.ngrok.app"
 
-        config = AgentConfig(api_key="", agent_id="")
-        with pytest.raises(ValueError, match="Invalid config"):
-            create_conversation(config)
+    def test_custom_llm_url_defaults_empty(self):
+        with patch.dict(os.environ, {}, clear=False):
+            config = AgentConfig(api_key="test", agent_id="test", custom_llm_url="")
+            assert config.custom_llm_url == ""
 
 
 @pytest.mark.skipif(
