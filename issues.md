@@ -241,39 +241,54 @@ P0
 ISSUE-02
 
 ## Description
-Build the core LangGraph agent that manages the multi-step conversation workflow. This replaces ElevenLabs' default LLM with a custom agent that has state management, tool calling, and branching logic.
+Build the core LangGraph agent that serves as the Custom LLM backend for ElevenLabs. This is the "brain" behind the voice agent — it receives conversation messages from ElevenLabs, performs multi-step reasoning (intent classification, tool orchestration, RAG), and streams responses back.
+
+**Architecture:** ElevenLabs handles voice (STT/TTS), language detection (system tool), and auth gating (workflow). LangGraph handles everything the built-in LLM can't: deterministic tool chaining, typed state, complex business logic, and testable node isolation.
+
+**Reference:** [Practical Guide: Open Source Agent Frameworks + ElevenAgents](https://elevenlabs.io/blog/practical-guide-open-source-agent-frameworks-and-elevenagents)
 
 ## Tasks
-- [ ] Design the LangGraph state schema:
-  - `language`: detected language
+- [ ] Design the LangGraph state schema (TypedDict):
+  - `messages`: conversation history (Annotated with add_messages reducer)
   - `auth_status`: unauthenticated / authenticated
   - `citizen_profile`: dict (populated after auth)
-  - `current_intent`: status_check / appointment / document_request / faq
-  - `conversation_history`: list of messages
-  - `tool_results`: list of tool outputs
-- [ ] Build the graph nodes:
-  - `language_detect` → detects language from first utterance
-  - `intent_classify` → classifies caller intent
-  - `authenticate` → runs auth flow
-  - `service_router` → routes to appropriate service node
-  - `status_check` → queries application status API
-  - `appointment_book` → books appointment via API
-  - `faq_answer` → answers from RAG knowledge base
-  - `escalate` → human handoff
-- [ ] Define edges and conditional routing between nodes
-- [ ] Implement state persistence across conversation turns
-- [ ] Implement prompt versioning system:
-  - Store system prompts as versioned files (e.g., `prompts/v1.0/system_prompt.md`)
-  - Add `prompt_version` field to LangGraph state — track which version served each call
-  - Log prompt version with every conversation for later analysis (which version yields better resolution rates)
+  - `current_intent`: status_check / appointment / document_request / faq / fee_inquiry / complaint / escalate
+  - `completed_intents`: list (track multi-intent handling)
+  - `prompt_version`: str (which prompt version served this conversation)
+- [ ] Build the graph nodes (LangGraph does what ElevenLabs native can't):
+  - `intent_classify` → classifies caller intent from message context
+  - `service_router` → conditional edge routing based on intent + auth status
+  - `status_check` → calls status API, **chains results**: if "additional_docs_needed" → auto RAG query for required documents → combined response
+  - `appointment_book` → validates availability + books via API
+  - `document_request` → initiates document preparation via API
+  - `faq_answer` → RAG retrieval from Pinecone (custom pipeline, not ElevenLabs basic KB)
+  - `complaint` → records complaint via API
+  - `escalate` → returns system tool call (transfer_to_number) for ElevenLabs to execute
+  - Note: `language_detect` and `authenticate` stay on ElevenLabs side (platform-native)
+- [ ] Implement deterministic tool chaining (LangGraph's core differentiator):
+  - Scenario 1 — Status "additional_docs_needed" → auto RAG query for required documents → single combined response
+  - Scenario 2 — Application "rejected" + rejection < 30 days → offer appeal guidance; else → "süre dolmuş"
+  - Scenario 3 — Citizen already submitted docs once + still "additional_docs_needed" → escalate to human (system loop detected)
+- [ ] Implement multi-intent tracking via state:
+  - `completed_intents` list in state tracks what's done
+  - After each service node completes → check if pending intents remain → route back to service_router
+  - Auth not re-asked if already authenticated in this session
+- [ ] Define conditional edges and routing:
+  - START → intent_classify
+  - intent_classify → service_router (conditional based on intent)
+  - service_router → [status_check | appointment_book | document_request | faq_answer | complaint | escalate]
+  - Each service node → END (or back to intent_classify for multi-intent)
+- [ ] Implement prompt versioning in state — track per conversation
 - [ ] Write unit tests for each node in isolation
 
 ## Acceptance Criteria
-- [ ] Agent correctly routes through: greeting → language detect → intent → auth → service → closing
-- [ ] State persists across turns — agent remembers what happened earlier in the call
-- [ ] Each node is independently testable
-- [ ] Graph handles unexpected paths without crashing (e.g., caller changes intent mid-flow)
-- [ ] Prompt versions are tracked per conversation and queryable for performance comparison
+- [ ] Agent correctly classifies intents and routes to appropriate service nodes
+- [ ] State persists across turns — agent remembers auth status, citizen profile, completed intents
+- [ ] Each node is independently testable with pytest
+- [ ] **Tool chaining test:** "Başvuru durumumu öğrenmek istiyorum" → status API returns "additional_docs_needed" → graph automatically queries RAG → response includes both status AND required documents
+- [ ] **Multi-intent test:** "Başvurumu sorgula, bir de randevu al" → status_check completes → graph routes to appointment_book without re-asking auth
+- [ ] **Business logic test:** rejected application + rejection < 30 days → appeal guidance; rejected + > 30 days → "süre dolmuş"
+- [ ] Prompt versions tracked per conversation
 
 ---
 
@@ -289,34 +304,46 @@ P0
 ISSUE-07
 
 ## Description
-Connect the LangGraph agent to ElevenLabs Conversational AI as a Custom LLM endpoint. This is the bridge between voice (ElevenLabs) and intelligence (LangGraph).
+Connect the LangGraph agent to ElevenLabs Conversational AI as a Custom LLM endpoint. The proxy server translates between ElevenLabs' OpenAI-compatible request format and LangGraph's streaming output, following the pattern from the FDE team's blog post.
+
+**Three-step pattern (from FDE blog):**
+1. Receive OpenAI-format chat completion request from ElevenLabs
+2. Run LangGraph agent (filter tool calls, forward only model text)
+3. Stream SSE chunks back in OpenAI-compatible format
 
 ## Tasks
-- [ ] Refactor or replace `agent/conversation.py` — current file uses direct audio interface which won't apply once Custom LLM endpoint is the bridge. Evaluate whether to repurpose for local testing or remove entirely.
-- [ ] Build a FastAPI server that exposes the LangGraph agent as a streaming endpoint
-- [ ] Implement the ElevenLabs Custom LLM interface (reference: open-source agent frameworks blog)
-- [ ] Handle streaming responses — LangGraph output must stream token-by-token to ElevenLabs for low-latency voice
-- [ ] Configure ElevenLabs agent to use the Custom LLM endpoint instead of default
+- [ ] Build Custom LLM proxy: FastAPI `/v1/chat/completions` endpoint
+  - Accept OpenAI-format messages + tools from ElevenLabs
+  - Run LangGraph agent with `stream_mode="messages"`
+  - Filter: only forward `langgraph_node == "model"` events (skip tool calls)
+  - Stream SSE chunks: `data: {json}\n\n` + `data: [DONE]\n\n`
+- [ ] Implement `sse_chunk()` helper for OpenAI-compatible SSE formatting
+- [ ] Handle system tools — return function calls (end_call, language_detection, transfer_to_number) in OpenAI format for ElevenLabs to execute
+- [ ] Implement buffer words for slow processing ("Bir saniye bakıyorum... ")
+- [ ] Refactor or remove `agent/conversation.py` (replaced by Custom LLM proxy)
+- [ ] Configure ElevenLabs agent to use Custom LLM endpoint (via deploy script)
+- [ ] Set up public URL (ngrok) for ElevenLabs to reach our server
 - [ ] Test end-to-end: voice in → ElevenLabs STT → Custom LLM (LangGraph) → ElevenLabs TTS → voice out
 - [ ] Measure and optimize latency — target under 500ms first-token response
 - [ ] Implement layered graceful degradation strategy:
   - **Level 0 (healthy):** Full LangGraph agent with all tools and RAG
-  - **Level 1 (LangGraph degraded):** Simplified prompt-only mode — bypass graph, use direct LLM call with essential context
-  - **Level 2 (Custom LLM down):** Fall back to ElevenLabs default agent with static FAQ responses
-  - **Level 3 (full outage):** Static voice message apologizing and offering callback or human transfer
-  - Auto-detect degradation level via health checks and circuit breaker pattern
-  - Log all degradation events with level, duration, and recovery time
+  - **Level 1 (LangGraph degraded):** Simplified prompt-only mode — bypass graph, direct LLM call
+  - **Level 2 (Custom LLM down):** Fall back to ElevenLabs default agent with static FAQ
+  - **Level 3 (full outage):** Static voice message + callback offer
+  - Circuit breaker pattern for auto-detection
 
 ## Acceptance Criteria
 - [ ] Voice call triggers LangGraph agent and receives streamed voice response
+- [ ] SSE output is OpenAI-compatible — ElevenLabs processes it correctly
+- [ ] Tool call events are filtered — only assistant text reaches TTS
+- [ ] System tool calls (end_call, transfer) are returned correctly
 - [ ] Latency is under 500ms for first token
-- [ ] Each degradation level activates correctly when the layer above fails
-- [ ] Degradation transitions are seamless to the caller — no silence or errors
-- [ ] All degradation events are logged with level and duration
-- [ ] Conversation feels natural, no awkward pauses between turns
+- [ ] Buffer words maintain natural conversation flow during processing
+- [ ] Graceful degradation activates correctly per level
 
 ## References
 - https://elevenlabs.io/blog/practical-guide-open-source-agent-frameworks-and-elevenagents
+- https://elevenlabs.io/docs/eleven-agents/customization/llm/custom-llm
 
 ---
 

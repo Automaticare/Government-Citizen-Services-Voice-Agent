@@ -108,3 +108,9 @@ make deploy-dry        # Preview deploy without applying
   - [x] Guest mode endpoint (POST /guest/info) with bilingual FAQ (TR + EN), auth-required flagging
   - [x] issues.md updated
 - ISSUE-06: COMPLETE (endpoint scope — workflow integration deferred to ISSUE-07/08)
+- ISSUE-07: LangGraph Multi-Step Agent Workflow — IN PROGRESS
+  - Architecture: ElevenLabs (voice, language detection, auth gating) + LangGraph (intent routing, tool orchestration, RAG, state)
+  - LangGraph serves as Custom LLM backend via OpenAI-compatible `/v1/chat/completions` SSE endpoint
+  - Pattern from FDE blog: receive messages → run agent → stream filtered SSE chunks
+  - [x] State schema (AgentState TypedDict) — messages, auth, intent, completed_intents, prompt_version
+  - [x] Graph skeleton — 8 nodes, conditional routing by intent, pending intent check
