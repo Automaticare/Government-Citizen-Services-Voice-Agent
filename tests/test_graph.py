@@ -191,6 +191,18 @@ class TestEscalate:
         assert "transfer_number" in args
         assert args["transfer_number"].startswith("+90")
 
+    def test_tool_call_includes_client_and_agent_messages(self):
+        from agent.nodes.escalate import escalate
+        import json
+        state = make_state(language="tr")
+        result = escalate(state)
+        msg = result["messages"][-1]
+        args = json.loads(msg.additional_kwargs["tool_calls"][0]["function"]["arguments"])
+        assert "client_message" in args
+        assert "agent_message" in args
+        assert len(args["client_message"]) > 0
+        assert len(args["agent_message"]) > 0
+
     def test_marks_escalate_completed(self):
         from agent.nodes.escalate import escalate
         state = make_state(language="tr")

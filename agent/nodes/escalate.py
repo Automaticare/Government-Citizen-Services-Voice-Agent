@@ -34,16 +34,20 @@ def escalate(state: AgentState) -> dict:
 
     if language == "en":
         reason = "Citizen requested assistance from a human operator"
-        msg_text = ("I'm transferring you to a human operator who can assist you further. "
-                    "Please hold for a moment.")
+        client_message = ("I'm transferring you to a human operator who can assist you further. "
+                          "Please hold for a moment.")
+        agent_message = "Citizen requesting human assistance via voice agent."
     else:
         reason = "Vatandas operator yardimi talep etti"
-        msg_text = ("Sizi daha detayli yardimci olabilecek bir operatore bagliyorum. "
-                    "Lutfen bir an bekleyin.")
+        client_message = ("Sizi daha detayli yardimci olabilecek bir operatore bagliyorum. "
+                          "Lutfen bir an bekleyin.")
+        agent_message = "Vatandas sesli asistan uzerinden operator yardimi talep ediyor."
 
     logger.info("Escalation triggered — returning transfer_to_number tool call")
 
     # OpenAI function call format — ElevenLabs executes this as a system tool
+    # All four parameters required by ElevenLabs: reason, transfer_number,
+    # client_message (read to caller while waiting), agent_message (briefing for operator)
     tool_call = {
         "id": f"call_{uuid.uuid4().hex[:12]}",
         "type": "function",
@@ -52,12 +56,14 @@ def escalate(state: AgentState) -> dict:
             "arguments": json.dumps({
                 "reason": reason,
                 "transfer_number": _TRANSFER_NUMBER,
+                "client_message": client_message,
+                "agent_message": agent_message,
             }),
         },
     }
 
     msg = AIMessage(
-        content=msg_text,
+        content=client_message,
         additional_kwargs={"tool_calls": [tool_call]},
     )
 
