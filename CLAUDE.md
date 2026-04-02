@@ -29,6 +29,11 @@ Government Citizen Services Voice Agent — an AI-powered multilingual voice age
 - Prompt versioning tracked per conversation for data-driven optimization
 - Cost per call tracked and displayed in dashboard (AI vs human agent ROI)
 
+## README Policy
+- README contains the FULL target project structure — not just what exists today
+- As new files are created in each issue, they should already be reflected in README
+- Never strip future/planned items from README — an evaluator should see the full vision upfront
+
 ## Development Guidelines
 - Use `.env` for secrets, never commit API keys
 - All conversation logs must redact personal data (TC Kimlik, DOB)
@@ -57,3 +62,5 @@ python -m agent.conversation
   - [x] Project folder structure + requirements.txt
   - [x] ElevenLabs agent config + conversation manager
   - [x] Agent connection tests (unit + live)
+  - [x] README updated with setup instructions and actual project structure
+- ISSUE-01: COMPLETE

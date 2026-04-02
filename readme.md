@@ -177,25 +177,43 @@ For ElevenLabs specifically, this project shows:
 
 ## Getting Started
 
+### Prerequisites
+- Python 3.11+
+- An [ElevenLabs](https://elevenlabs.io) account with Conversational AI access
+- An [OpenAI](https://platform.openai.com) API key
+- A [Pinecone](https://www.pinecone.io) account (free tier works)
+
+### Setup
+
 ```bash
 git clone https://github.com/Automaticare/Government-Citizen-Services-Voice-Agent.git
 cd Government-Citizen-Services-Voice-Agent
 
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
 cp .env.example .env
-# Fill in your API keys: ELEVENLABS_API_KEY, PINECONE_API_KEY, OPENAI_API_KEY
+# Fill in your API keys — see .env.example for required variables
+```
+
+### Run
+
+```bash
+# Test a voice conversation (requires microphone + speaker)
+python -m agent.conversation
 
 # Start the Custom LLM server
-uvicorn agent.server:app --reload --port 8000
+uvicorn api.server:app --reload --port 8000
 
 # Start the Mock Government API
 uvicorn api.government:app --reload --port 8001
 
 # Start the Dashboard
 streamlit run dashboard/app.py
+
+# Run tests
+python -m pytest tests/ -v
 ```
 
 ## Project Structure
@@ -203,8 +221,10 @@ streamlit run dashboard/app.py
 ```
 Government-Citizen-Services-Voice-Agent/
 ├── agent/
-│   ├── server.py              # FastAPI Custom LLM endpoint
+│   ├── config.py              # Agent configuration (AgentConfig dataclass)
+│   ├── conversation.py        # ElevenLabs conversation session manager
 │   ├── graph.py               # LangGraph workflow definition
+│   ├── state.py               # LangGraph state schema
 │   ├── nodes/                 # Individual graph nodes
 │   │   ├── language_detect.py
 │   │   ├── intent_classify.py
@@ -214,10 +234,10 @@ Government-Citizen-Services-Voice-Agent/
 │   │   ├── appointment_book.py
 │   │   ├── faq_answer.py
 │   │   └── escalate.py
-│   ├── tools/                 # Tool definitions and schemas
-│   ├── prompts/               # System prompts (TR + EN)
-│   └── state.py               # LangGraph state schema
+│   ├── prompts/               # Versioned system prompts (TR + EN)
+│   └── tools/                 # Agent tool definitions and schemas
 ├── api/
+│   ├── server.py              # FastAPI Custom LLM endpoint for ElevenLabs
 │   ├── government.py          # Mock government API
 │   ├── models.py              # Data models
 │   └── seed_data.py           # Sample citizen/application data
@@ -233,17 +253,21 @@ Government-Citizen-Services-Voice-Agent/
 │   ├── knowledge_base/        # Government service documents (TR + EN)
 │   └── citizens.json          # Mock citizen database
 ├── tests/
+│   ├── test_agent_connection.py  # Agent config & connectivity tests
 │   ├── test_nodes/            # Unit tests per node
 │   ├── test_tools/            # Tool integration tests
 │   ├── test_auth/             # Authentication flow tests
-│   └── test_e2e/              # End-to-end scenario tests
+│   ├── test_e2e/              # End-to-end scenario tests
+│   └── eval/                  # Automated conversation evaluation framework
 ├── docs/
 │   ├── ARCHITECTURE.md        # Detailed system design
 │   ├── DECISIONS.md           # Design decisions and tradeoffs
 │   └── diagrams/              # Architecture and flow diagrams
-├── .env.example
-├── requirements.txt
-├── README.md                  # This file
+├── .env.example               # Required environment variables
+├── .gitignore
+├── CLAUDE.md                  # Development guidelines
+├── requirements.txt           # Python dependencies
+├── readme.md                  # This file
 └── SUMMARY.pdf                # 1-page executive summary
 ```
 
