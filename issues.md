@@ -154,40 +154,45 @@ Authentication Flow
 P0
 
 ## Dependencies
-ISSUE-04, ISSUE-07 (Custom LLM must be connected for tool-based validation)
+ISSUE-04 (design, done)
+ISSUE-07 partially (LangGraph tool integration deferred — endpoint built independently, connected when Custom LLM bridge is ready)
 
 ## Description
 Implement the caller identity verification logic designed in ISSUE-04. The agent collects credentials via voice, validates format, and checks against a mock citizen database.
 
+**Scope decision:** Auth endpoint (FastAPI + SQLite) is built and tested independently. LangGraph/workflow tool integration happens in ISSUE-07/08 when Custom LLM bridge is ready. This follows real-world FDE practice: build backend first, integrate later.
+
 ## Tasks
-- [ ] Create mock citizen database (PostgreSQL or JSON file) with 20+ sample records:
-  - Fields: tc_kimlik, first_name, last_name, date_of_birth, application_ref, application_status, language_preference
-- [ ] Implement TC Kimlik format validation (11 digits + checksum algorithm)
+- [ ] Create mock citizen database (SQLite + SQLAlchemy ORM) with 20+ sample records:
+  - Fields: tc_kimlik (hashed), first_name, last_name, date_of_birth, application_ref, application_status, language_preference
+  - SQLAlchemy abstraction allows production switch to PostgreSQL via connection string change
+- [x] Implement TC Kimlik format validation (11 digits + checksum algorithm) — done in ISSUE-04
 - [ ] Implement application reference number format validation
 - [ ] Build FastAPI endpoint: `POST /auth/verify` that accepts credentials and returns auth status + citizen profile
-- [ ] Integrate authentication as a tool in the LangGraph agent workflow
-- [ ] Implement retry logic — max 3 attempts, then escalate
-- [ ] Implement session state — once authenticated, agent remembers caller identity for the rest of the call
-- [ ] Handle voice recognition edge cases — numbers misheard, repeated digits
 - [ ] Implement KVKK compliance in authentication:
-  - Play consent notice at start of authentication flow before collecting any personal data
   - Mask sensitive fields (TC Kimlik, DOB) in all conversation logs — store only hashed versions
   - Implement audit trail — log who accessed what data, when, and why (without logging the data itself)
   - Add data retention TTL — auto-purge authentication session data after configurable period (default: 30 days)
+- *Deferred to ISSUE-07/08:*
+  - [ ] Integrate authentication as a tool in the LangGraph agent workflow
+  - [ ] Implement retry logic via ElevenLabs workflow edges (dynamic variable: auth_attempt_count)
+  - [ ] Implement session state via LangGraph state management
 
 ## Acceptance Criteria
-- [ ] Agent collects TC Kimlik via voice and validates format
-- [ ] Valid credentials return citizen profile and unlock service flows
-- [ ] Invalid credentials trigger retry with helpful guidance
-- [ ] After 3 failed attempts, agent offers human transfer
-- [ ] Agent never reads back full TC Kimlik to the caller
-- [ ] Consent notice is delivered before any personal data collection
+- [ ] `POST /auth/verify` returns citizen profile on valid credentials
+- [ ] Invalid credentials return structured error with guidance message
+- [ ] TC Kimlik checksum rejects invalid numbers before DB lookup
 - [ ] TC Kimlik and DOB are masked/hashed in all stored logs
-- [ ] Audit trail captures all data access events
+- [ ] Audit trail captures all auth attempt events (no raw PII)
+- [ ] SQLAlchemy models are production-ready (migration-friendly schema)
+- *Deferred to ISSUE-07/08:*
+  - [ ] Agent collects TC Kimlik via voice and validates format
+  - [ ] After 3 failed attempts, agent offers human transfer
+  - [ ] Consent notice is delivered before any personal data collection
 
 ## Notes
-- Voice number recognition can be tricky — "bir iki üç" vs "123" — test both
-- Store session auth state in LangGraph's state management, not externally
+- Voice number recognition edge cases ("bir iki üç" vs "123") will be handled in ISSUE-07/08 when voice integration is connected
+- DB: SQLite for demo (zero setup), SQLAlchemy ORM for production-readiness (PostgreSQL swap = 1 line change)
 - KVKK reference: https://www.kvkk.gov.tr — Turkey's Personal Data Protection Law (Law No. 6698)
 # ISSUE-06: Authentication Failure Handling & Human Handoff
 

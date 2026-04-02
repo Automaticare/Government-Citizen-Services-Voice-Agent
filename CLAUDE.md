@@ -8,6 +8,7 @@ Government Citizen Services Voice Agent — an AI-powered multilingual voice age
 - **Agent Backend:** LangGraph (multi-step workflow orchestration)
 - **API Bridge:** FastAPI (Custom LLM endpoint for ElevenLabs)
 - **RAG:** Pinecone (vector DB) + OpenAI embeddings
+- **Database:** SQLite (demo) / PostgreSQL (production) via SQLAlchemy ORM
 - **Dashboard:** Streamlit
 - **Language:** Python 3.11+
 
@@ -91,3 +92,7 @@ make deploy-dry        # Preview deploy without applying
   - [x] TC Kimlik checksum validator with masking utility (13 tests passing)
   - [x] issues.md updated
 - ISSUE-04: COMPLETE
+- ISSUE-05: Implement Authentication Logic — IN PROGRESS
+  - Scope: Auth endpoint built independently, LangGraph integration deferred to ISSUE-07/08
+  - DB: SQLite + SQLAlchemy ORM (production-ready abstraction)
+  - [x] SQLAlchemy models (Citizen + AuthAuditLog) + seed data (23 records, 5 statuses, 2 languages)
