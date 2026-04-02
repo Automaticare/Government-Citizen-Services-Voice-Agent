@@ -1,10 +1,13 @@
 """
 Deploy agent configuration to ElevenLabs platform via API.
 
+Configures a single multilingual agent with language presets (TR + EN)
+and automatic language detection. One agent, one endpoint — the agent
+switches language based on what the caller speaks.
+
 Usage:
-    python -m agent.deploy                  # Deploy with defaults (TR, v1.0)
-    python -m agent.deploy --language en    # Deploy English prompt
-    python -m agent.deploy --version v1.0   # Deploy specific version
+    python -m agent.deploy                  # Deploy multilingual agent
+    python -m agent.deploy --version v1.0   # Deploy specific prompt version
     python -m agent.deploy --dry-run        # Preview without deploying
 """
 
@@ -24,56 +27,73 @@ from agent.prompts.loader import load_system_prompt, get_latest_version, list_ve
 
 logger = get_logger(__name__)
 
-# Agent first messages per language
+# First messages per language
 FIRST_MESSAGES = {
-    "tr": "Merhaba, Vatandaş Hizmetleri'ne hoş geldiniz. Ben Umut, size nasıl yardımcı olabilirim?",
+    "tr": "Merhaba, Vatandas Hizmetleri'ne hos geldiniz. Ben Umut, size nasil yardimci olabilirim?",
     "en": "Hello, welcome to Citizen Services. I'm Umut, how can I help you today?",
 }
 
 
-def build_agent_config(language: str, version: str) -> dict:
-    """Build the ElevenLabs agent update payload.
+def build_agent_config(version: str) -> dict:
+    """Build the ElevenLabs multilingual agent update payload.
+
+    Primary language is Turkish. English is added as a language preset.
+    Language detection system tool enables automatic switching.
 
     Args:
-        language: "tr" or "en"
         version: Prompt version (e.g., "v1.0")
 
     Returns:
         Dict with conversation_config and name for the update call.
     """
-    system_prompt = load_system_prompt(language=language, version=version)
-    first_message = FIRST_MESSAGES.get(language, FIRST_MESSAGES["tr"])
+    system_prompt_tr = load_system_prompt(language="tr", version=version)
 
-    # English requires turbo/flash v2; multilingual v2 supports Turkish
-    tts_model = "eleven_flash_v2" if language == "en" else "eleven_flash_v2_5"
+    # Language detection system tool — auto-switches based on caller's language
+    language_detection_tool = {
+        "type": "system",
+        "name": "language_detection",
+        "description": "Detect the caller's language and switch to it. Trigger when the user speaks a different language than the current conversation language.",
+        "params": {"system_tool_type": "language_detection"},
+    }
 
+    # Primary config: Turkish
     conversation_config = ConversationalConfig(
         agent=ELAgentConfig(
             prompt={
-                "prompt": system_prompt,
+                "prompt": system_prompt_tr,
                 "llm": "gpt-4o",
                 "temperature": 0.7,
                 "max_tokens": 1024,
+                "tools": [language_detection_tool],
             },
-            first_message=first_message,
-            language=language,
+            first_message=FIRST_MESSAGES["tr"],
+            language="tr",
         ),
         tts=TtsConversationalConfigOutput(
-            model_id=tts_model,
+            model_id="eleven_flash_v2_5",
         ),
+        # English language preset — dict format to avoid Input/Output type mismatch
+        language_presets={
+            "en": {
+                "overrides": {
+                    "agent": {
+                        "first_message": FIRST_MESSAGES["en"],
+                    },
+                },
+            },
+        },
     )
 
     return {
         "conversation_config": conversation_config,
-        "name": f"Umut - Citizen Services ({language.upper()}, {version})",
+        "name": f"Umut - Citizen Services (Multilingual, {version})",
     }
 
 
-def deploy(language: str = "tr", version: str | None = None, dry_run: bool = False) -> None:
-    """Deploy agent configuration to ElevenLabs.
+def deploy(version: str | None = None, dry_run: bool = False) -> None:
+    """Deploy multilingual agent configuration to ElevenLabs.
 
     Args:
-        language: Target language ("tr" or "en")
         version: Prompt version. Uses latest if not specified.
         dry_run: If True, preview config without deploying.
     """
@@ -86,11 +106,12 @@ def deploy(language: str = "tr", version: str | None = None, dry_run: bool = Fal
         logger.error(f"Config validation failed: {', '.join(errors)}")
         sys.exit(1)
 
-    payload = build_agent_config(language=language, version=version)
+    payload = build_agent_config(version=version)
 
     logger.info(f"Agent: {payload['name']}")
     logger.info(f"Prompt version: {version}")
-    logger.info(f"Language: {language}")
+    logger.info(f"Primary language: TR | Additional: EN")
+    logger.info(f"Language detection: enabled")
 
     if dry_run:
         logger.info("[DRY RUN] Would deploy the above config. No changes made.")
@@ -108,13 +129,12 @@ def deploy(language: str = "tr", version: str | None = None, dry_run: bool = Fal
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Deploy agent config to ElevenLabs")
-    parser.add_argument("--language", choices=["tr", "en"], default="tr")
+    parser = argparse.ArgumentParser(description="Deploy multilingual agent to ElevenLabs")
     parser.add_argument("--version", default=None, help=f"Prompt version. Available: {list_versions()}")
     parser.add_argument("--dry-run", action="store_true", help="Preview without deploying")
     args = parser.parse_args()
 
-    deploy(language=args.language, version=args.version, dry_run=args.dry_run)
+    deploy(version=args.version, dry_run=args.dry_run)
 
 
 if __name__ == "__main__":

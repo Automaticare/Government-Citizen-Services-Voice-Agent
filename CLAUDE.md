@@ -76,3 +76,7 @@ python -m agent.conversation
   - [x] EN agent deployed and verified
   - [x] Transcript visibility in test output
 - ISSUE-02: COMPLETE
+- ISSUE-03: Multilingual Voice Support (Turkish + English) — IN PROGRESS
+  - [x] Deploy script refactored for single multilingual agent with language_presets
+  - [x] Language detection system tool enabled
+  - [x] EN language preset with first message override

@@ -87,15 +87,17 @@ Configure the agent to support Turkish and English voice interactions with autom
 - [ ] Set up dynamic voice switching based on detected language
 - [ ] Translate system prompt and all static agent responses into both languages
 - [ ] Test language detection accuracy with at least 10 test calls (5 Turkish, 5 English)
-- [ ] Handle mixed-language edge case — caller switches language mid-conversation
+- [ ] Handle mixed-language edge case — language detection system tool handles automatic switching via audio detection and explicit user requests
 
 ## Acceptance Criteria
 - [ ] Agent detects Turkish and responds in Turkish with Turkish voice
 - [ ] Agent detects English and responds in English with English voice
-- [ ] Language switch mid-conversation is handled gracefully
+- [ ] Language detection tool correctly triggers on language switch
 - [ ] Voice quality is natural and clear in both languages
 
 ## Notes
+- Single agent with language_presets — one agent, one endpoint, auto-switches based on caller language
+- Language detection is a system tool (not custom logic) — platform-native solution
 - Consider adding Arabic as a third language later (ISSUE for future iteration, relevant for refugee population use case)
 - ElevenLabs supports 70+ languages, so this is platform-native
 - Oscar's Deutsche Telekom case study mentions real-time translation — reference that for architecture decisions
@@ -279,6 +281,7 @@ ISSUE-07
 Connect the LangGraph agent to ElevenLabs Conversational AI as a Custom LLM endpoint. This is the bridge between voice (ElevenLabs) and intelligence (LangGraph).
 
 ## Tasks
+- [ ] Refactor or replace `agent/conversation.py` — current file uses direct audio interface which won't apply once Custom LLM endpoint is the bridge. Evaluate whether to repurpose for local testing or remove entirely.
 - [ ] Build a FastAPI server that exposes the LangGraph agent as a streaming endpoint
 - [ ] Implement the ElevenLabs Custom LLM interface (reference: open-source agent frameworks blog)
 - [ ] Handle streaming responses — LangGraph output must stream token-by-token to ElevenLabs for low-latency voice
