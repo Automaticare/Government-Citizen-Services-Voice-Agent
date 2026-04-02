@@ -1,10 +1,16 @@
 """
 Escalation node.
 
-Returns a message indicating human transfer. When connected to
-ElevenLabs via Custom LLM (ISSUE-08), this will return an OpenAI
-function call for the transfer_to_number system tool.
+Returns an AIMessage with a transfer_to_number system tool call in
+OpenAI function call format. ElevenLabs Custom LLM proxy forwards this
+to ElevenLabs, which executes the transfer as a platform-native system tool.
+
+The message content is also set so TTS speaks a verbal confirmation
+before the transfer triggers.
 """
+
+import json
+import uuid
 
 from langchain_core.messages import AIMessage
 from agent.state import AgentState
@@ -13,21 +19,49 @@ from agent.nodes.utils import mark_completed
 
 logger = get_logger(__name__)
 
+# Demo transfer number — replace with real operator line in production
+_TRANSFER_NUMBER = "+905001234567"
+
 
 def escalate(state: AgentState) -> dict:
-    """Escalate to human operator."""
+    """Escalate to human operator via ElevenLabs transfer_to_number system tool.
+
+    Returns an AIMessage with:
+    - content: verbal confirmation (spoken by TTS before transfer)
+    - additional_kwargs.tool_calls: OpenAI function call for transfer_to_number
+    """
     language = state.get("language", "tr")
 
     if language == "en":
-        msg = ("I'm transferring you to a human operator who can assist you further. "
-               "Please hold for a moment.")
+        reason = "Citizen requested assistance from a human operator"
+        msg_text = ("I'm transferring you to a human operator who can assist you further. "
+                    "Please hold for a moment.")
     else:
-        msg = ("Sizi daha detayli yardimci olabilecek bir operatore bagliyorum. "
-               "Lutfen bir an bekleyin.")
+        reason = "Vatandas operator yardimi talep etti"
+        msg_text = ("Sizi daha detayli yardimci olabilecek bir operatore bagliyorum. "
+                    "Lutfen bir an bekleyin.")
 
-    logger.info(f"Escalation triggered for session")
+    logger.info("Escalation triggered — returning transfer_to_number tool call")
+
+    # OpenAI function call format — ElevenLabs executes this as a system tool
+    tool_call = {
+        "id": f"call_{uuid.uuid4().hex[:12]}",
+        "type": "function",
+        "function": {
+            "name": "transfer_to_number",
+            "arguments": json.dumps({
+                "reason": reason,
+                "transfer_number": _TRANSFER_NUMBER,
+            }),
+        },
+    }
+
+    msg = AIMessage(
+        content=msg_text,
+        additional_kwargs={"tool_calls": [tool_call]},
+    )
 
     return {
-        "messages": [AIMessage(content=msg)],
+        "messages": [msg],
         "completed_intents": mark_completed(state, "escalate"),
     }

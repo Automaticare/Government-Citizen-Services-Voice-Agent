@@ -171,6 +171,31 @@ class TestEscalate:
         last_msg = result["messages"][-1].content.lower()
         assert "transfer" in last_msg or "operator" in last_msg
 
+    def test_returns_transfer_tool_call(self):
+        from agent.nodes.escalate import escalate
+        state = make_state(language="tr")
+        result = escalate(state)
+        msg = result["messages"][-1]
+        tool_calls = msg.additional_kwargs.get("tool_calls", [])
+        assert len(tool_calls) == 1
+        assert tool_calls[0]["function"]["name"] == "transfer_to_number"
+
+    def test_tool_call_includes_transfer_number(self):
+        from agent.nodes.escalate import escalate
+        import json
+        state = make_state(language="tr")
+        result = escalate(state)
+        msg = result["messages"][-1]
+        args = json.loads(msg.additional_kwargs["tool_calls"][0]["function"]["arguments"])
+        assert "transfer_number" in args
+        assert args["transfer_number"].startswith("+90")
+
+    def test_marks_escalate_completed(self):
+        from agent.nodes.escalate import escalate
+        state = make_state(language="tr")
+        result = escalate(state)
+        assert "escalate" in result["completed_intents"]
+
 
 class TestComplaint:
     """Test complaint node."""

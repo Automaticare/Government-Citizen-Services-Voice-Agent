@@ -3,6 +3,7 @@ elevenlabs>=1.0.0
 
 # LLM & Agent Framework
 langchain>=0.3.0
+langchain-openai>=0.2.0
 langgraph>=0.2.0
 openai>=1.0.0
 

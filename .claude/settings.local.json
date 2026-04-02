@@ -14,7 +14,9 @@
       "Bash(python -m agent.deploy --language tr)",
       "Bash(python -m pytest tests/test_intent_detection.py -v -s)",
       "Bash(python -m agent.deploy --language en)",
-      "Bash(python -m pytest tests/test_intent_detection.py -v -s --timeout=300)"
+      "Bash(python -m pytest tests/test_intent_detection.py -v -s --timeout=300)",
+      "Bash(ngrok version:*)",
+      "Bash(python -c \"from elevenlabs.types import ConversationalConfig; import inspect; print\\([x for x in dir\\(ConversationalConfig\\) if not x.startswith\\('_'\\)]\\)\")"
     ]
   }
 }
