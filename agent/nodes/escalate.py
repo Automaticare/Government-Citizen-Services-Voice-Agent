@@ -1,26 +1,39 @@
 """
 Escalation node.
 
-Returns a system tool call (transfer_to_number) in OpenAI format
-for ElevenLabs to execute. LangGraph doesn't transfer the call
-itself — it tells ElevenLabs to do it.
+Returns a message indicating human transfer. When connected to
+ElevenLabs via Custom LLM (ISSUE-08), this will return an OpenAI
+function call for the transfer_to_number system tool.
 """
 
 from langchain_core.messages import AIMessage
 from agent.state import AgentState
+from agent.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 def escalate(state: AgentState) -> dict:
-    """Escalate to human operator via ElevenLabs system tool.
+    """Escalate to human operator."""
+    language = state.get("language", "tr")
 
-    TODO: Return proper OpenAI function call format in commit 2.
-    """
-    intent = state.get("current_intent", "escalate")
+    if language == "en":
+        msg = ("I'm transferring you to a human operator who can assist you further. "
+               "Please hold for a moment.")
+    else:
+        msg = ("Sizi daha detayli yardimci olabilecek bir operatore bagliyorum. "
+               "Lutfen bir an bekleyin.")
+
+    logger.info(f"Escalation triggered for session")
+
+    return {
+        "messages": [AIMessage(content=msg)],
+        "completed_intents": _mark_completed(state, "escalate"),
+    }
+
+
+def _mark_completed(state: AgentState, intent: str) -> list:
     completed = list(state.get("completed_intents", []))
     if intent not in completed:
         completed.append(intent)
-
-    return {
-        "messages": [AIMessage(content="Sizi bir operatöre bağlıyorum, lütfen bekleyin.")],
-        "completed_intents": completed,
-    }
+    return completed

@@ -1,25 +1,49 @@
 """
 FAQ answer node.
 
-Retrieves answers from RAG knowledge base (Pinecone).
-Handles general questions and fee inquiries.
+Uses LLM to answer general questions. In ISSUE-10, this will be
+backed by a Pinecone RAG pipeline. For now, uses LLM with context
+from the system prompt.
 """
 
-from langchain_core.messages import AIMessage
+from dotenv import load_dotenv
+load_dotenv()
+
+from langchain_core.messages import SystemMessage
+from langchain_openai import ChatOpenAI
+
 from agent.state import AgentState
+from agent.prompts.loader import load_system_prompt, get_latest_version
+from agent.logging_config import get_logger
+
+logger = get_logger(__name__)
+
+_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5)
 
 
 def faq_answer(state: AgentState) -> dict:
-    """Answer a general question using RAG pipeline.
+    """Answer a general question using LLM + system prompt context."""
+    language = state.get("language", "tr")
+    version = state.get("prompt_version", get_latest_version())
+    messages = state.get("messages", [])
 
-    TODO: Full RAG implementation with Pinecone in ISSUE-10.
-    """
-    intent = state.get("current_intent", "faq")
+    system_prompt = load_system_prompt(language=language, version=version)
+
+    response = _llm.invoke([
+        SystemMessage(content=system_prompt),
+        *messages,
+    ])
+
+    logger.info(f"FAQ answered | language={language} | prompt_version={version}")
+
+    return {
+        "messages": [response],
+        "completed_intents": _mark_completed(state, state.get("current_intent", "faq")),
+    }
+
+
+def _mark_completed(state: AgentState, intent: str) -> list:
     completed = list(state.get("completed_intents", []))
     if intent not in completed:
         completed.append(intent)
-
-    return {
-        "messages": [AIMessage(content="Sorunuzu araştırıyorum...")],
-        "completed_intents": completed,
-    }
+    return completed
