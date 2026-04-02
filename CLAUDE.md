@@ -106,3 +106,5 @@ make deploy-dry        # Preview deploy without applying
   - Scope: Handoff endpoint + guest mode built independently. Frustration detection + workflow retry deferred to ISSUE-07/08.
   - [x] Human handoff endpoint (POST /handoff) with audit logging and reason codes
   - [x] Guest mode endpoint (POST /guest/info) with bilingual FAQ (TR + EN), auth-required flagging
+  - [x] issues.md updated
+- ISSUE-06: COMPLETE (endpoint scope — workflow integration deferred to ISSUE-07/08)

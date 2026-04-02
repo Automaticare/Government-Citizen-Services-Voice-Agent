@@ -220,8 +220,8 @@ Implement graceful failure handling when authentication fails or the caller cann
   - [ ] Voice-based handoff trigger with goodbye message
 
 ## Acceptance Criteria
-- [ ] `POST /handoff` logs transfer event and returns handoff confirmation
-- [ ] Guest mode allows general questions without authentication
+- [x] `POST /handoff` logs transfer event and returns handoff confirmation
+- [x] Guest mode allows general questions without authentication (bilingual FAQ, auth-required flagging)
 - [x] All failure events are logged with timestamps and reason codes (done in ISSUE-05)
 - *Deferred to ISSUE-07/08:*
   - [ ] After 3 failures, agent smoothly transitions to human handoff via workflow
