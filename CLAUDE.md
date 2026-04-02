@@ -99,3 +99,4 @@ make deploy-dry        # Preview deploy without applying
   - [x] FastAPI auth endpoints (POST /auth/verify/tc-kimlik, POST /auth/verify/app-ref)
   - [x] App ref format validator
   - [x] Audit logging + progressive failure guidance + safe citizen profile (no raw PII)
+  - [x] Auth endpoint tests — 20 tests (TC Kimlik, app ref, progressive guidance, PII safety, audit trail)
