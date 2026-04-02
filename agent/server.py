@@ -214,6 +214,7 @@ async def _level1_fallback(messages: list, language: str):
 # --- Endpoint ---
 
 @app.post("/v1/chat/completions")
+@app.post("/chat/completions")
 async def chat_completions(request: ChatCompletionRequest):
     """OpenAI-compatible chat completions endpoint for ElevenLabs Custom LLM."""
     conversation_id = _extract_conversation_id(request)

@@ -71,13 +71,20 @@ def build_agent_config(version: str, custom_llm_url: str | None = None) -> dict:
 
     # Custom LLM: route all LLM calls to our LangGraph proxy
     if custom_llm_url:
-        # Ensure URL points to our /v1/chat/completions endpoint
+        # ElevenLabs requires llm="custom-llm" when custom_llm is set
+        prompt_config["llm"] = "custom-llm"
+
+        # ElevenLabs auto-appends /v1/chat/completions — only pass base URL
         url = custom_llm_url.rstrip("/")
-        if not url.endswith("/v1/chat/completions"):
-            url = f"{url}/v1/chat/completions"
+        url = url.removesuffix("/v1/chat/completions").removesuffix("/v1")
 
         prompt_config["custom_llm"] = {
             "url": url,
+            # ngrok free plan shows an HTML interstitial page on first request.
+            # This header bypasses it so ElevenLabs gets JSON, not HTML.
+            "request_headers": {
+                "ngrok-skip-browser-warning": "true",
+            },
         }
         # Level 2 graceful degradation: if Custom LLM is unreachable,
         # ElevenLabs falls back to its default native LLM
