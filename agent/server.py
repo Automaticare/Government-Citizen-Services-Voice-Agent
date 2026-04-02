@@ -20,6 +20,7 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from pydantic import BaseModel
 from langgraph.checkpoint.memory import MemorySaver
 
@@ -68,7 +69,7 @@ def sse_chunk(response_id: str, delta: dict, finish_reason: str | None = None) -
     return f"data: {json.dumps(payload)}\n\n"
 
 
-# --- Graph runner ---
+# --- Request helpers ---
 
 def _extract_conversation_id(request: ChatCompletionRequest) -> str:
     """Extract conversation ID from ElevenLabs extra body or generate one."""
@@ -88,6 +89,24 @@ def _extract_auth_state(request: ChatCompletionRequest) -> tuple[str, dict | Non
     return "unauthenticated", None
 
 
+def _extract_language(request: ChatCompletionRequest) -> str:
+    """Extract language from ElevenLabs extra body. Defaults to Turkish."""
+    if request.elevenlabs_extra_body:
+        return request.elevenlabs_extra_body.get("language", "tr")
+    return "tr"
+
+
+def _buffer_word(language: str) -> str:
+    """Return a buffer word for slow processing in the detected language.
+
+    Trailing space is intentional — ElevenLabs docs require it to prevent
+    audio artifacts when the next chunk arrives.
+    """
+    if language == "en":
+        return "One moment please... "
+    return "Bir saniye bakiyorum... "
+
+
 # --- Endpoint ---
 
 @app.post("/v1/chat/completions")
@@ -95,12 +114,11 @@ async def chat_completions(request: ChatCompletionRequest):
     """OpenAI-compatible chat completions endpoint for ElevenLabs Custom LLM."""
     conversation_id = _extract_conversation_id(request)
     auth_status, citizen_profile = _extract_auth_state(request)
+    language = _extract_language(request)
 
     logger.info(f"Custom LLM request | conv={conversation_id} | messages={len(request.messages)}")
 
     # Convert request messages to LangGraph format
-    from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
-
     lc_messages = []
     for msg in request.messages:
         content = msg.content or ""
@@ -120,52 +138,65 @@ async def chat_completions(request: ChatCompletionRequest):
 
     async def stream():
         response_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
-        sent_role = False
+        has_tool_calls = False
+
+        # Always send role + buffer word before LangGraph starts.
+        # LangGraph LLM calls take 1-3s — buffer word keeps the
+        # conversation natural while the response is being generated.
+        yield sse_chunk(response_id, {"role": "assistant"})
+        yield sse_chunk(response_id, {"content": _buffer_word(language)})
 
         try:
-            # Build input — only pass messages + auth context from ElevenLabs.
-            # Other state fields (completed_intents, current_intent) are
-            # preserved by the checkpointer across turns.
             graph_input = {"messages": latest_messages}
 
-            # Auth context from ElevenLabs extra_body — only set if provided,
-            # otherwise checkpointer preserves previous values.
             if auth_status != "unauthenticated":
                 graph_input["auth_status"] = auth_status
             if citizen_profile:
                 graph_input["citizen_profile"] = citizen_profile
 
-            # Stream with message-level granularity
             async for message_chunk, metadata in graph.astream(
                 graph_input,
                 config=config,
                 stream_mode="messages",
             ):
-                # Filter: only forward model text chunks (skip tool calls)
                 node = metadata.get("langgraph_node", "")
                 content = getattr(message_chunk, "content", None)
+                tool_calls = getattr(message_chunk, "additional_kwargs", {}).get("tool_calls")
 
-                if not content:
-                    continue
-
-                # Skip non-terminal nodes (intent_classify, service_router)
-                # Forward only service node responses
+                # Skip routing/classification nodes — only forward service responses
                 if node in ("intent_classify", "service_router"):
                     continue
 
-                if not sent_role:
-                    yield sse_chunk(response_id, {"role": "assistant"})
-                    sent_role = True
+                # Forward tool_calls (e.g. transfer_to_number from escalate node)
+                if tool_calls:
+                    has_tool_calls = True
+                    tool_calls_delta = [
+                        {
+                            "index": i,
+                            "id": tc.get("id", f"call_{uuid.uuid4().hex[:8]}"),
+                            "type": "function",
+                            "function": {
+                                "name": tc["function"]["name"],
+                                "arguments": tc["function"]["arguments"],
+                            },
+                        }
+                        for i, tc in enumerate(tool_calls)
+                    ]
+                    yield sse_chunk(response_id, {"tool_calls": tool_calls_delta})
 
-                yield sse_chunk(response_id, {"content": content})
+                # Forward text content
+                if content:
+                    yield sse_chunk(response_id, {"content": content})
 
         except Exception as e:
             logger.error(f"Graph execution error: {e}")
-            if not sent_role:
-                yield sse_chunk(response_id, {"role": "assistant"})
             yield sse_chunk(response_id, {"content": "Bir hata olustu. Lutfen tekrar deneyin."})
 
-        yield sse_chunk(response_id, {}, finish_reason="stop")
+        # finish_reason signals ElevenLabs how to handle the response:
+        # "tool_calls" → execute the function call (e.g. transfer_to_number)
+        # "stop"       → normal end of turn
+        finish_reason = "tool_calls" if has_tool_calls else "stop"
+        yield sse_chunk(response_id, {}, finish_reason=finish_reason)
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(stream(), media_type="text/event-stream")
