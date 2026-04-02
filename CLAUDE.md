@@ -89,3 +89,5 @@ make deploy-dry        # Preview deploy without applying
 - ISSUE-04: Caller Identity Verification Flow Design — IN PROGRESS
   - [x] Auth flow design doc — workflow-based deterministic auth, KVKK compliance, security boundaries
   - [x] TC Kimlik checksum validator with masking utility (13 tests passing)
+  - [x] issues.md updated
+- ISSUE-04: COMPLETE

@@ -116,32 +116,32 @@ ISSUE-02
 Design the caller authentication flow where citizens verify their identity before accessing personal information like application status. This is critical for security and directly maps to ElevenLabs' blog post on secure caller identity authentication.
 
 ## Tasks
-- [ ] Define authentication methods:
+- [x] Define authentication methods:
   - Primary: TC Kimlik No (11-digit Turkish national ID) + Date of Birth
   - Secondary: Application Reference Number + Last Name
-- [ ] Design the conversation flow for authentication:
-  1. Agent asks which verification method the caller prefers
-  2. Agent collects required fields one by one (not all at once)
-  3. Agent validates each field format in real-time (e.g., TC Kimlik must be 11 digits)
-  4. Agent confirms identity against mock database
-  5. On success: proceed to service flow
-  6. On failure: retry (max 3 attempts) then offer human transfer
-- [ ] Document the flow as a state diagram
-- [ ] Define what data the agent is allowed to read back to the caller (e.g., first name yes, full TC kimlik no)
-- [ ] Design KVKK (Turkish GDPR) compliance requirements into the authentication flow:
-  - Caller must hear a consent notice before personal data is collected ("Bu görüşme kaydedilmektedir ve kişisel verileriniz KVKK kapsamında işlenmektedir")
-  - Define data retention policy — how long auth attempts and personal data are stored
-  - Define data minimization rules — agent only collects what is strictly necessary
-  - Specify which personal data fields are logged vs redacted in conversation logs (e.g., TC Kimlik must be masked in logs: 123****789)
+- [x] Design the conversation flow for authentication:
+  1. Subagent 1 (unauthenticated): Greet, detect language, KVKK consent, collect credentials one by one
+  2. Dispatch tool (verify_identity): Validate format (TC Kimlik checksum) + DB lookup
+  3. Success edge → Subagent 2 (authenticated): Full tools access
+  4. Failure edge → Retry (max 3) with progressive guidance, then human transfer
+- [x] Document the flow as a state diagram (docs/auth_flow.md)
+- [x] Define what data the agent is allowed to read back to the caller (e.g., first name yes, full TC kimlik no)
+- [x] Design KVKK (Turkish GDPR) compliance requirements into the authentication flow:
+  - Caller hears consent notice before personal data collection
+  - Data retention: 30 days for PII, 90 days for auth results and transcripts
+  - Data minimization: only collect what is strictly necessary
+  - Log redaction: TC Kimlik masked (123****901), DOB masked (**/**/1990), audit trail has no raw PII
+- [x] Implement TC Kimlik checksum validator (agent/tools/tc_kimlik.py) with masking utility
 
 ## Acceptance Criteria
-- [ ] Authentication flow is documented as a state diagram
-- [ ] Both verification methods are defined with clear field requirements
-- [ ] Retry and failure logic is specified
-- [ ] Security boundaries are defined (what agent can/cannot say)
-- [ ] KVKK compliance requirements are documented — consent flow, data retention, data minimization, log redaction rules
+- [x] Authentication flow is documented as a state diagram
+- [x] Both verification methods are defined with clear field requirements
+- [x] Retry and failure logic is specified (progressive guidance: simple retry → offer alt method → human transfer)
+- [x] Security boundaries are defined (what agent can/cannot say)
+- [x] KVKK compliance requirements are documented — consent flow, data retention, data minimization, log redaction rules
 
 ## Notes
+- Architecture follows ElevenLabs Workflows: dispatch tool + subagent isolation (deterministic, not LLM-based gating)
 - Reference: https://elevenlabs.io/blog/designing-secure-caller-identity-authentication-flows-for-voice-agents
 - This is design only — implementation is ISSUE-05
 - TC Kimlik validation has a checksum algorithm — implement it for format validation
