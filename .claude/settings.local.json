@@ -12,7 +12,9 @@
       "Bash(python -c ':*)",
       "Bash(python -m agent.deploy --dry-run)",
       "Bash(python -m agent.deploy --language tr)",
-      "Bash(python -m pytest tests/test_intent_detection.py -v -s)"
+      "Bash(python -m pytest tests/test_intent_detection.py -v -s)",
+      "Bash(python -m agent.deploy --language en)",
+      "Bash(python -m pytest tests/test_intent_detection.py -v -s --timeout=300)"
     ]
   }
 }

@@ -46,22 +46,22 @@ ISSUE-01
 Define the agent's identity, system prompt, and base conversation flow for a government citizen services use case. The agent should behave like a professional, patient, multilingual government support representative.
 
 ## Tasks
-- [ ] Write system prompt that defines the agent persona: name, role, tone, boundaries
-- [ ] Define the core conversation flow:
+- [x] Write system prompt that defines the agent persona: name, role, tone, boundaries
+- [x] Define the core conversation flow:
   1. Greeting — agent introduces itself and asks how it can help
-  2. Intent detection — agent identifies what the citizen needs (status check, appointment, document request, general question)
+  2. Intent detection — agent identifies what the citizen needs (status check, appointment, document request, general question, fee inquiry, complaint, human transfer)
   3. Routing — based on intent, agent follows the appropriate sub-flow
   4. Closing — agent confirms resolution and asks if anything else is needed
-- [ ] Define out-of-scope handling — what happens when someone asks something the agent cannot help with
-- [ ] Define conversation guardrails — agent should not provide legal advice, should not share other citizens' data, should not make promises about application outcomes
-- [ ] Implement the base flow on ElevenLabs platform
-- [ ] Test with at least 5 different opening prompts to verify intent detection works
+- [x] Define out-of-scope handling — what happens when someone asks something the agent cannot help with
+- [x] Define conversation guardrails — agent should not provide legal advice, should not share other citizens' data, should not make promises about application outcomes
+- [x] Implement the base flow on ElevenLabs platform (programmatic deploy via API)
+- [x] Test with at least 5 different opening prompts to verify intent detection works (11 scenarios via simulation API)
 
 ## Acceptance Criteria
-- [ ] Agent greets the caller professionally in the detected language
-- [ ] Agent correctly identifies at least 3 intents: status check, appointment booking, general question
-- [ ] Agent gracefully handles out-of-scope requests without breaking the conversation
-- [ ] Guardrails prevent the agent from sharing sensitive information or making commitments
+- [x] Agent greets the caller professionally in the detected language
+- [x] Agent correctly identifies at least 3 intents: status check, appointment booking, general question (7 intents verified)
+- [x] Agent gracefully handles out-of-scope requests without breaking the conversation
+- [x] Guardrails prevent the agent from sharing sensitive information or making commitments
 
 ## Notes
 - Keep the persona friendly but professional — this is a government service, not a casual chatbot

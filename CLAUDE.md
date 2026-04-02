@@ -72,5 +72,7 @@ python -m agent.conversation
   - [x] Prompt loader with version management
   - [x] Conversation flow design — state diagram, intent routing, auth flow, out-of-scope handling
   - [x] Programmatic agent deploy via API (`python -m agent.deploy`)
-  - [x] Intent detection tests — 10 simulated scenarios, all passing
+  - [x] Intent detection tests — 11 simulated scenarios (7 intents + EN + out-of-scope + guardrail + multi-intent), all passing
+  - [x] EN agent deployed and verified
+  - [x] Transcript visibility in test output
 - ISSUE-02: COMPLETE

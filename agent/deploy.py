@@ -44,6 +44,9 @@ def build_agent_config(language: str, version: str) -> dict:
     system_prompt = load_system_prompt(language=language, version=version)
     first_message = FIRST_MESSAGES.get(language, FIRST_MESSAGES["tr"])
 
+    # English requires turbo/flash v2; multilingual v2 supports Turkish
+    tts_model = "eleven_flash_v2" if language == "en" else "eleven_flash_v2_5"
+
     conversation_config = ConversationalConfig(
         agent=ELAgentConfig(
             prompt={
@@ -56,7 +59,7 @@ def build_agent_config(language: str, version: str) -> dict:
             language=language,
         ),
         tts=TtsConversationalConfigOutput(
-            model_id="eleven_flash_v2_5",
+            model_id=tts_model,
         ),
     )
 
