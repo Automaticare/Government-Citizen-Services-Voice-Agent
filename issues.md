@@ -210,17 +210,22 @@ ISSUE-05
 Implement graceful failure handling when authentication fails or the caller cannot be verified. Include human agent transfer capability.
 
 ## Tasks
-- [ ] Implement 3-strike retry logic with progressive guidance (e.g., "Let me help you — your TC Kimlik number is the 11-digit number on the front of your ID card")
-- [ ] Build human handoff endpoint — when triggered, agent says goodbye and simulates transfer
-- [ ] Handle caller frustration — if caller expresses frustration, skip remaining retries and offer transfer immediately
-- [ ] Log all failed authentication attempts with reason codes for dashboard analytics
-- [ ] Implement "guest mode" — limited FAQ access without authentication for non-personal queries
+- [x] Progressive guidance per attempt — already implemented in ISSUE-05 auth endpoint (`_failure_guidance`)
+- [ ] Build human handoff endpoint — `POST /handoff` simulates transfer, logs event with reason
+- [ ] Implement "guest mode" — limited FAQ/general info access without authentication
+- [x] Log all failed authentication attempts with reason codes — already implemented in ISSUE-05 (AuthAuditLog)
+- *Deferred to ISSUE-07/08 (requires voice + LangGraph):*
+  - [ ] 3-strike retry via ElevenLabs workflow edges (auth_attempt_count dynamic variable)
+  - [ ] Caller frustration detection — LLM inference to skip retries and fast-track to human transfer
+  - [ ] Voice-based handoff trigger with goodbye message
 
 ## Acceptance Criteria
-- [ ] After 3 failures, agent smoothly transitions to human handoff
-- [ ] Frustrated callers are fast-tracked to human transfer
+- [ ] `POST /handoff` logs transfer event and returns handoff confirmation
 - [ ] Guest mode allows general questions without authentication
-- [ ] All failure events are logged with timestamps and reason codes
+- [x] All failure events are logged with timestamps and reason codes (done in ISSUE-05)
+- *Deferred to ISSUE-07/08:*
+  - [ ] After 3 failures, agent smoothly transitions to human handoff via workflow
+  - [ ] Frustrated callers are fast-tracked to human transfer
 
 ---
 

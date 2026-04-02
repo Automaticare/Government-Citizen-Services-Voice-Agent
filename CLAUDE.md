@@ -102,3 +102,7 @@ make deploy-dry        # Preview deploy without applying
   - [x] Auth endpoint tests — 20 tests (TC Kimlik, app ref, progressive guidance, PII safety, audit trail)
   - [x] issues.md updated
 - ISSUE-05: COMPLETE (auth endpoint scope — LangGraph integration deferred to ISSUE-07/08)
+- ISSUE-06: Authentication Failure Handling & Human Handoff — IN PROGRESS
+  - Scope: Handoff endpoint + guest mode built independently. Frustration detection + workflow retry deferred to ISSUE-07/08.
+  - [x] Human handoff endpoint (POST /handoff) with audit logging and reason codes
+  - [x] Guest mode endpoint (POST /guest/info) with bilingual FAQ (TR + EN), auth-required flagging

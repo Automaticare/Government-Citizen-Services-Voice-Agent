@@ -7,6 +7,7 @@ Run:
 
 from fastapi import FastAPI
 from api.auth import router as auth_router
+from api.handoff import router as handoff_router
 from api.models import init_db
 
 app = FastAPI(
@@ -16,6 +17,7 @@ app = FastAPI(
 )
 
 app.include_router(auth_router)
+app.include_router(handoff_router)
 
 
 @app.on_event("startup")
