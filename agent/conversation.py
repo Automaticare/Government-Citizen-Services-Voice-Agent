@@ -5,14 +5,14 @@ Wraps the ElevenLabs Conversation class with project-specific
 configuration and callback handling.
 """
 
-import logging
 from elevenlabs.client import ElevenLabs
 from elevenlabs.conversational_ai.conversation import Conversation
 from elevenlabs.conversational_ai.default_audio_interface import DefaultAudioInterface
 
 from agent.config import AgentConfig
+from agent.logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def create_conversation(config: AgentConfig | None = None) -> Conversation:

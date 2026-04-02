@@ -5,7 +5,8 @@
       "WebFetch(domain:pypi.org)",
       "WebFetch(domain:github.com)",
       "Bash(python -m pytest tests/test_agent_connection.py -v)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(python -m pytest tests/test_logging.py -v)"
     ]
   }
 }

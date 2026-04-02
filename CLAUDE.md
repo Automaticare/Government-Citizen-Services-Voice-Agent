@@ -35,6 +35,8 @@ Government Citizen Services Voice Agent — an AI-powered multilingual voice age
 - Never strip future/planned items from README — an evaluator should see the full vision upfront
 
 ## Development Guidelines
+- Always use `from agent.logging_config import get_logger` — never use `print()` or raw `logging`
+- PII redaction is automatic — TC Kimlik (11 digits) and DOB patterns are masked before log output
 - Use `.env` for secrets, never commit API keys
 - All conversation logs must redact personal data (TC Kimlik, DOB)
 - System prompts live in versioned files under `/agent/prompts/`
@@ -62,5 +64,6 @@ python -m agent.conversation
   - [x] Project folder structure + requirements.txt
   - [x] ElevenLabs agent config + conversation manager
   - [x] Agent connection tests (unit + live)
-  - [x] README updated with setup instructions and actual project structure
+  - [x] README updated with setup instructions and full target structure
+  - [x] Structured logging with PII redaction filter
 - ISSUE-01: COMPLETE
