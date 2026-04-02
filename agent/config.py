@@ -29,6 +29,11 @@ class AgentConfig:
         default_factory=lambda: os.getenv("PINECONE_INDEX_NAME", "gov-citizen-services")
     )
 
+    # Custom LLM (for ElevenLabs to reach our proxy)
+    custom_llm_url: str = field(
+        default_factory=lambda: os.getenv("CUSTOM_LLM_URL", "")
+    )
+
     # Agent behavior
     default_language: str = field(
         default_factory=lambda: os.getenv("DEFAULT_LANGUAGE", "tr")

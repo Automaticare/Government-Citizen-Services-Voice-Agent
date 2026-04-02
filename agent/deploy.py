@@ -1,9 +1,10 @@
 """
 Deploy agent configuration to ElevenLabs platform via API.
 
-Configures a single multilingual agent with language presets (TR + EN)
-and automatic language detection. One agent, one endpoint — the agent
-switches language based on what the caller speaks.
+Configures a single multilingual agent with language presets (TR + EN),
+automatic language detection, and Custom LLM endpoint (our LangGraph
+proxy). When Custom LLM is unreachable, ElevenLabs falls back to its
+default LLM (Level 2 graceful degradation via backup_llm_config).
 
 Usage:
     python -m agent.deploy                  # Deploy multilingual agent
@@ -34,7 +35,7 @@ FIRST_MESSAGES = {
 }
 
 
-def build_agent_config(version: str) -> dict:
+def build_agent_config(version: str, custom_llm_url: str | None = None) -> dict:
     """Build the ElevenLabs multilingual agent update payload.
 
     Primary language is Turkish. English is added as a language preset.
@@ -42,6 +43,9 @@ def build_agent_config(version: str) -> dict:
 
     Args:
         version: Prompt version (e.g., "v1.0")
+        custom_llm_url: Public URL for our Custom LLM proxy (e.g. ngrok URL).
+                        If set, ElevenLabs sends requests to our LangGraph server
+                        instead of using its native LLM.
 
     Returns:
         Dict with conversation_config and name for the update call.
@@ -56,16 +60,35 @@ def build_agent_config(version: str) -> dict:
         "params": {"system_tool_type": "language_detection"},
     }
 
+    # Prompt config — common fields
+    prompt_config = {
+        "prompt": system_prompt_tr,
+        "llm": "gpt-4o",
+        "temperature": 0.7,
+        "max_tokens": 1024,
+        "tools": [language_detection_tool],
+    }
+
+    # Custom LLM: route all LLM calls to our LangGraph proxy
+    if custom_llm_url:
+        # Ensure URL points to our /v1/chat/completions endpoint
+        url = custom_llm_url.rstrip("/")
+        if not url.endswith("/v1/chat/completions"):
+            url = f"{url}/v1/chat/completions"
+
+        prompt_config["custom_llm"] = {
+            "url": url,
+        }
+        # Level 2 graceful degradation: if Custom LLM is unreachable,
+        # ElevenLabs falls back to its default native LLM
+        prompt_config["backup_llm_config"] = {
+            "preference": "default",
+        }
+
     # Primary config: Turkish
     conversation_config = ConversationalConfig(
         agent=ELAgentConfig(
-            prompt={
-                "prompt": system_prompt_tr,
-                "llm": "gpt-4o",
-                "temperature": 0.7,
-                "max_tokens": 1024,
-                "tools": [language_detection_tool],
-            },
+            prompt=prompt_config,
             first_message=FIRST_MESSAGES["tr"],
             language="tr",
         ),
@@ -106,12 +129,18 @@ def deploy(version: str | None = None, dry_run: bool = False) -> None:
         logger.error(f"Config validation failed: {', '.join(errors)}")
         sys.exit(1)
 
-    payload = build_agent_config(version=version)
+    custom_llm_url = config.custom_llm_url or None
+    payload = build_agent_config(version=version, custom_llm_url=custom_llm_url)
 
     logger.info(f"Agent: {payload['name']}")
     logger.info(f"Prompt version: {version}")
     logger.info(f"Primary language: TR | Additional: EN")
     logger.info(f"Language detection: enabled")
+    if custom_llm_url:
+        logger.info(f"Custom LLM: {custom_llm_url}")
+        logger.info(f"Backup LLM: default (Level 2 fallback)")
+    else:
+        logger.info(f"Custom LLM: not configured (using ElevenLabs native LLM)")
 
     if dry_run:
         logger.info("[DRY RUN] Would deploy the above config. No changes made.")
