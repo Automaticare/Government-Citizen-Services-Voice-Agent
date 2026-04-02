@@ -340,20 +340,47 @@ class TestCustomLLMProxy:
         assert "moment" in word.lower() or "please" in word.lower()
         assert word.endswith(" ")
 
-    def test_extract_language_from_extra_body(self):
+    def test_detect_language_english(self):
+        from agent.server import _detect_language
+        assert _detect_language("Hello, how are you?") == "en"
+        assert _detect_language("What are the working hours?") == "en"
+
+    def test_detect_language_turkish(self):
+        from agent.server import _detect_language
+        assert _detect_language("Merhaba, nasılsınız?") == "tr"
+        assert _detect_language("Çalışma saatleri nedir?") == "tr"
+
+    def test_extract_language_from_user_message(self):
         from agent.server import _extract_language, ChatCompletionRequest
         req = ChatCompletionRequest(
-            messages=[{"role": "user", "content": "hello"}],
-            elevenlabs_extra_body={"language": "en"},
+            messages=[{"role": "user", "content": "Hello, I need help"}],
         )
         assert _extract_language(req) == "en"
 
-    def test_extract_language_defaults_to_turkish(self):
+    def test_extract_language_turkish_message(self):
         from agent.server import _extract_language, ChatCompletionRequest
         req = ChatCompletionRequest(
-            messages=[{"role": "user", "content": "merhaba"}],
+            messages=[{"role": "user", "content": "Merhaba, yardım istiyorum"}],
         )
         assert _extract_language(req) == "tr"
+
+    def test_detect_previous_language(self):
+        from agent.server import _detect_previous_language, ChatCompletionRequest
+        req = ChatCompletionRequest(
+            messages=[
+                {"role": "user", "content": "Merhaba"},
+                {"role": "assistant", "content": "Hoş geldiniz"},
+                {"role": "user", "content": "Can you switch to English?"},
+            ],
+        )
+        assert _detect_previous_language(req) == "tr"
+
+    def test_detect_previous_language_first_turn(self):
+        from agent.server import _detect_previous_language, ChatCompletionRequest
+        req = ChatCompletionRequest(
+            messages=[{"role": "user", "content": "Hello"}],
+        )
+        assert _detect_previous_language(req) is None
 
     def test_sse_chunk_tool_calls_format(self):
         from agent.server import sse_chunk
@@ -364,16 +391,16 @@ class TestCustomLLMProxy:
 
     def test_sse_stream_starts_with_buffer_word(self):
         r = self.client.post("/v1/chat/completions", json={
-            "messages": [{"role": "user", "content": "test"}],
+            "messages": [{"role": "user", "content": "Merhaba, yardım istiyorum"}],
             "stream": True,
-            "elevenlabs_extra_body": {"conversation_id": "test-buffer-1", "language": "tr"},
+            "elevenlabs_extra_body": {"conversation_id": "test-buffer-1"},
         })
         lines = [l for l in r.text.split("\n") if l.startswith("data:") and l != "data: [DONE]"]
         assert len(lines) >= 2
         # First chunk: role
         first = json.loads(lines[0].replace("data: ", ""))
         assert first["choices"][0]["delta"].get("role") == "assistant"
-        # Second chunk: buffer word
+        # Second chunk: buffer word (Turkish detected from message)
         second = json.loads(lines[1].replace("data: ", ""))
         assert "bakiyorum" in second["choices"][0]["delta"].get("content", "")
 

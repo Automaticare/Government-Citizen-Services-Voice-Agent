@@ -115,6 +115,7 @@ class ChatCompletionRequest(BaseModel):
     temperature: float | None = 0.7
     max_tokens: int | None = None
     stream: bool | None = True
+    tools: list[dict] | None = None  # System tools sent by ElevenLabs
     elevenlabs_extra_body: dict | None = None
 
 
@@ -154,11 +155,51 @@ def _extract_auth_state(request: ChatCompletionRequest) -> tuple[str, dict | Non
     return "unauthenticated", None
 
 
+def _detect_language(text: str) -> str:
+    """Detect language from message text using simple heuristics.
+
+    Checks for Turkish-specific characters and common words.
+    Returns 'tr' or 'en'.
+    """
+    turkish_chars = set("çğıöşüÇĞİÖŞÜ")
+    if any(c in turkish_chars for c in text):
+        return "tr"
+
+    turkish_words = {"merhaba", "nasıl", "yardım", "teşekkür", "lütfen",
+                     "evet", "hayır", "bilgi", "başvuru", "randevu",
+                     "nedir", "istiyorum", "olabilir", "benim", "için"}
+    words = set(text.lower().split())
+    if words & turkish_words:
+        return "tr"
+
+    return "en"
+
+
 def _extract_language(request: ChatCompletionRequest) -> str:
-    """Extract language from ElevenLabs extra body. Defaults to Turkish."""
+    """Detect language from the latest user message content.
+
+    Falls back to extra_body language or 'tr' default.
+    """
+    # Detect from latest user message
+    for msg in reversed(request.messages):
+        if msg.role == "user" and msg.content:
+            return _detect_language(msg.content)
+
+    # Fallback to extra_body or default
     if request.elevenlabs_extra_body:
         return request.elevenlabs_extra_body.get("language", "tr")
     return "tr"
+
+
+def _detect_previous_language(request: ChatCompletionRequest) -> str | None:
+    """Detect language from the second-to-last user message.
+
+    Returns None if there's only one user message (first turn).
+    """
+    user_messages = [m for m in request.messages if m.role == "user" and m.content]
+    if len(user_messages) < 2:
+        return None
+    return _detect_language(user_messages[-2].content)
 
 
 def _buffer_word(language: str) -> str:
@@ -224,7 +265,13 @@ async def chat_completions(request: ChatCompletionRequest):
     auth_status, citizen_profile = _extract_auth_state(request)
     language = _extract_language(request)
 
-    logger.info(f"Custom LLM request | conv={conversation_id} | messages={len(request.messages)}")
+    # Detect language from latest user message and check for language switch
+    prev_language = _detect_previous_language(request)
+    language_switched = prev_language is not None and language != prev_language
+
+    logger.info(f"Custom LLM request | conv={conversation_id} | messages={len(request.messages)} | lang={language}")
+    if language_switched:
+        logger.info(f"Language switch detected: {prev_language} → {language}")
 
     # Convert request messages to LangGraph format
     lc_messages = []
@@ -258,7 +305,7 @@ async def chat_completions(request: ChatCompletionRequest):
                 yield sse_chunk(response_id, {"content": chunk})
         else:
             try:
-                graph_input = {"messages": lc_messages}
+                graph_input = {"messages": lc_messages, "language": language}
 
                 if auth_status != "unauthenticated":
                     graph_input["auth_status"] = auth_status
@@ -303,6 +350,23 @@ async def chat_completions(request: ChatCompletionRequest):
                 logger.error(f"Graph execution error: {e}")
                 _cb_record_failure()
                 yield sse_chunk(response_id, {"content": "Bir hata olustu. Lutfen tekrar deneyin."})
+
+        # Emit language_detection tool call if user switched language
+        if language_switched:
+            has_tool_calls = True
+            lang_tool_call = {
+                "index": 0,
+                "id": f"call_{uuid.uuid4().hex[:8]}",
+                "type": "function",
+                "function": {
+                    "name": "language_detection",
+                    "arguments": json.dumps({
+                        "reason": f"User switched from {prev_language} to {language}",
+                        "language": language,
+                    }),
+                },
+            }
+            yield sse_chunk(response_id, {"tool_calls": [lang_tool_call]})
 
         finish_reason = "tool_calls" if has_tool_calls else "stop"
         yield sse_chunk(response_id, {}, finish_reason=finish_reason)
