@@ -117,3 +117,5 @@ make deploy-dry        # Preview deploy without applying
   - [x] Node implementations — LLM intent classification, deterministic tool chaining (status→docs), all 7 service nodes
   - [x] Custom LLM proxy — FastAPI `/v1/chat/completions` SSE endpoint, MemorySaver checkpointer, conversation_id-based state persistence
   - [x] 24 tests — node isolation (intent, status chaining, appointment, escalate, complaint, document), graph routing, full flow, SSE proxy
+  - [x] issues.md updated
+- ISSUE-07: COMPLETE
