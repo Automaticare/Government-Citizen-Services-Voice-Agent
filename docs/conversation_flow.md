@@ -137,6 +137,50 @@
 | Other agencies | "Vergi borcumu öğrenebilir miyim?" | İlgili kuruma yönlendir (GİB) |
 | Personal opinion | "En iyi okul hangisi?" | Görüş bildirmediğini belirt |
 
+## Language Management
+
+### Architecture: Single Agent, Multiple Languages
+
+```
+┌─────────────────────────────────────────────────┐
+│          Agent: Umut (Multilingual)              │
+│                                                  │
+│  Primary Language: Turkish (TR)                  │
+│  TTS Model: eleven_flash_v2_5 (multilingual)    │
+│                                                  │
+│  Language Presets:                                │
+│  ┌─────────────────────────────────────────┐    │
+│  │ EN: English                              │    │
+│  │   - first_message: "Hello, welcome..."   │    │
+│  │   - TTS: auto (flash v2 for EN)         │    │
+│  └─────────────────────────────────────────┘    │
+│                                                  │
+│  System Tool: language_detection                 │
+│  Triggers on:                                    │
+│    1. User speaks different language than current │
+│    2. User explicitly asks to switch language    │
+└─────────────────────────────────────────────────┘
+```
+
+### Language Detection Flow
+
+1. **Greeting** — Agent greets in primary language (Turkish)
+2. **First user utterance** — Language detection tool analyzes audio
+3. **Switch decision:**
+   - User speaks Turkish → continue in Turkish
+   - User speaks English → tool triggers, agent switches to English
+   - User explicitly asks ("Can you speak English?") → tool triggers switch
+4. **Ongoing** — Agent continues in detected language for rest of call
+
+### Why Single Agent (Not Per-Language Agents)
+
+| Approach | Pros | Cons |
+|----------|------|------|
+| **Single agent + presets** (chosen) | One endpoint, unified analytics, easy to add languages | First message always in primary language |
+| **Separate agents per language** | Full control per language | Multiple endpoints, split analytics, double maintenance |
+
+For a government service: one phone number, one agent, it just works. Adding Arabic later = one preset addition, not a new agent deployment.
+
 ## Multi-Intent Handling
 
 Citizens may have multiple needs in one call. Strategy:

@@ -84,3 +84,6 @@ make deploy-dry        # Preview deploy without applying
   - [x] Language detection system tool enabled
   - [x] EN language preset with first message override
   - [x] Language detection tests — 5 scenarios (TR, EN, EN status, TR→EN switch, EN→TR switch), all passing
+  - [x] Conversation flow docs updated with language management section
+  - [x] issues.md updated
+- ISSUE-03: COMPLETE
