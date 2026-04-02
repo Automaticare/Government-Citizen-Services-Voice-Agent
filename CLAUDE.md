@@ -54,8 +54,11 @@ pip install -r requirements.txt
 cp .env.example .env
 # Fill in your API keys in .env
 
-# 3. Run a test conversation (requires microphone + speaker)
-python -m agent.conversation
+# 3. Common commands (or use Makefile if `make` is available)
+make test              # Run unit tests
+make test-live         # Run live API + simulation tests
+make deploy            # Run tests, then deploy to ElevenLabs
+make deploy-dry        # Preview deploy without applying
 ```
 
 ## Current Status
