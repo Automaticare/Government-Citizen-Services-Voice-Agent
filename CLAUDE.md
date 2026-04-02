@@ -13,11 +13,14 @@ Government Citizen Services Voice Agent — an AI-powered multilingual voice age
 
 ## Project Structure
 ```
-/agent      — LangGraph agent, prompts, tools
-/api        — FastAPI server (Custom LLM bridge)
-/dashboard  — Streamlit analytics app
-/docs       — Architecture docs, flow diagrams
-/tests      — Unit, integration, and eval tests
+/agent              — LangGraph agent core
+  /prompts          — Versioned system prompts
+  /tools            — Agent tool definitions (status check, appointment, etc.)
+/api                — FastAPI server (Custom LLM bridge for ElevenLabs)
+/dashboard          — Streamlit analytics app
+/docs               — Architecture docs, flow diagrams
+/tests              — Unit and integration tests
+  /eval             — Automated conversation evaluation framework
 ```
 
 ## Key Design Decisions
