@@ -202,15 +202,6 @@ def _detect_previous_language(request: ChatCompletionRequest) -> str | None:
     return _detect_language(user_messages[-2].content)
 
 
-def _buffer_word(language: str) -> str:
-    """Return a buffer word for slow processing in the detected language.
-
-    Trailing space is intentional — ElevenLabs docs require it to prevent
-    audio artifacts when the next chunk arrives.
-    """
-    if language == "en":
-        return "One moment please... "
-    return "Bir saniye bakiyorum... "
 
 
 # --- Level 1 fallback (direct OpenAI call, bypass LangGraph) ---
@@ -292,11 +283,7 @@ async def chat_completions(request: ChatCompletionRequest):
         response_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
         has_tool_calls = False
 
-        # Always send role + buffer word before processing starts.
-        # LLM calls take 1-3s — buffer word keeps the conversation
-        # natural while the response is being generated.
         yield sse_chunk(response_id, {"role": "assistant"})
-        yield sse_chunk(response_id, {"content": _buffer_word(language)})
 
         if _cb_is_open():
             # Level 1 degradation: bypass LangGraph, direct OpenAI call
