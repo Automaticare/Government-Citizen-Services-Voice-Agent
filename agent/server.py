@@ -23,7 +23,6 @@ from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from pydantic import BaseModel
-from langgraph.checkpoint.memory import MemorySaver
 
 from agent.graph import build_graph
 from agent.logging_config import get_logger
@@ -31,9 +30,9 @@ from agent.prompts.loader import load_system_prompt, get_latest_version
 
 logger = get_logger(__name__)
 
-# Build graph with checkpointer for state persistence across turns
-checkpointer = MemorySaver()
-_compiled_graph = build_graph(checkpointer=checkpointer)
+# Build graph without checkpointer — ElevenLabs is stateless and sends
+# full message history with every request, so no server-side persistence needed.
+_compiled_graph = build_graph()
 
 
 # --- Circuit breaker (graceful degradation) ---
@@ -134,7 +133,11 @@ def sse_chunk(response_id: str, delta: dict, finish_reason: str | None = None) -
 # --- Request helpers ---
 
 def _extract_conversation_id(request: ChatCompletionRequest) -> str:
-    """Extract conversation ID from ElevenLabs extra body or generate one."""
+    """Extract conversation ID from ElevenLabs extra body or generate one.
+
+    Used for logging only — ElevenLabs is stateless and sends full
+    message history with every request, so no server-side state needed.
+    """
     if request.elevenlabs_extra_body:
         conv_id = request.elevenlabs_extra_body.get("conversation_id")
         if conv_id:
@@ -234,12 +237,9 @@ async def chat_completions(request: ChatCompletionRequest):
         elif msg.role == "system":
             lc_messages.append(SystemMessage(content=content))
 
-    # Only pass the latest user message to avoid re-processing history
-    # (checkpointer handles state persistence)
-    latest_messages = [lc_messages[-1]] if lc_messages else []
-
+    # ElevenLabs sends full message history with every request (stateless).
+    # Pass all messages to the graph — no checkpointer needed.
     graph = _compiled_graph
-    config = {"configurable": {"thread_id": conversation_id}}
 
     async def stream():
         response_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
@@ -258,7 +258,7 @@ async def chat_completions(request: ChatCompletionRequest):
                 yield sse_chunk(response_id, {"content": chunk})
         else:
             try:
-                graph_input = {"messages": latest_messages}
+                graph_input = {"messages": lc_messages}
 
                 if auth_status != "unauthenticated":
                     graph_input["auth_status"] = auth_status
@@ -267,7 +267,6 @@ async def chat_completions(request: ChatCompletionRequest):
 
                 async for message_chunk, metadata in graph.astream(
                     graph_input,
-                    config=config,
                     stream_mode="messages",
                 ):
                     node = metadata.get("langgraph_node", "")
