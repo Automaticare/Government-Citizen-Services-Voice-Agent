@@ -67,3 +67,6 @@ python -m agent.conversation
   - [x] README updated with setup instructions and full target structure
   - [x] Structured logging with PII redaction filter
   - [x] Live agent connection test — PASSED
+- ISSUE-02: Agent Persona & Base Conversation Flow — IN PROGRESS
+  - [x] System prompts v1.0 (TR + EN) with 7 intents, guardrails, out-of-scope handling
+  - [x] Prompt loader with version management
