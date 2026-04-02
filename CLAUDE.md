@@ -96,3 +96,6 @@ make deploy-dry        # Preview deploy without applying
   - Scope: Auth endpoint built independently, LangGraph integration deferred to ISSUE-07/08
   - DB: SQLite + SQLAlchemy ORM (production-ready abstraction)
   - [x] SQLAlchemy models (Citizen + AuthAuditLog) + seed data (23 records, 5 statuses, 2 languages)
+  - [x] FastAPI auth endpoints (POST /auth/verify/tc-kimlik, POST /auth/verify/app-ref)
+  - [x] App ref format validator
+  - [x] Audit logging + progressive failure guidance + safe citizen profile (no raw PII)
