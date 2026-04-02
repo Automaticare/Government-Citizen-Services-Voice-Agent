@@ -5,7 +5,7 @@ POST /handoff — logs transfer event, returns handoff confirmation
 GET  /guest/info — limited FAQ access without authentication
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -161,7 +161,7 @@ def request_handoff(
 
     # Log handoff event in audit trail
     audit = AuthAuditLog(
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(UTC),
         session_id=request.session_id,
         method="handoff",
         attempt_number=request.auth_attempts,

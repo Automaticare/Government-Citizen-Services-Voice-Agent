@@ -7,7 +7,7 @@ with audit logging. No raw PII in logs or responses.
 """
 
 import hashlib
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -77,7 +77,7 @@ def _log_audit(
 ):
     """Write an audit record. No raw PII."""
     audit = AuthAuditLog(
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(UTC),
         session_id=session_id,
         method=method,
         attempt_number=attempt_number,

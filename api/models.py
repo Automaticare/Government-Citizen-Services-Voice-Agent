@@ -9,7 +9,7 @@ Production: switch to PostgreSQL by changing DATABASE_URL in .env.
 """
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 from sqlalchemy import (
@@ -43,7 +43,7 @@ class Citizen(Base):
     application_ref = Column(String, unique=True, index=True)
     application_status = Column(String, nullable=False, default="pending")
     language_preference = Column(String, nullable=False, default="tr")
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class AuthAuditLog(Base):
@@ -52,7 +52,7 @@ class AuthAuditLog(Base):
     __tablename__ = "auth_audit_log"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     session_id = Column(String, nullable=False, index=True)
     method = Column(String, nullable=False)  # "tc_kimlik_dob" or "app_ref_lastname"
     attempt_number = Column(Integer, nullable=False)
