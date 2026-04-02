@@ -3,6 +3,8 @@
 ## Project Overview
 Government Citizen Services Voice Agent — an AI-powered multilingual voice agent (Turkish + English) for government citizen services. Built on ElevenLabs Conversational AI with a custom LangGraph backend, RAG pipeline (Pinecone), and Streamlit analytics dashboard.
 
+**Context:** This is an FDE (Forward Deployed Engineer) demo project for ElevenLabs. The architecture should demonstrate both platform mastery (ElevenLabs native features) and engineering depth (Custom LLM + LangGraph). Reference: Oscar's guidance says LangGraph + Custom LLM is the expected approach.
+
 ## Tech Stack
 - **Voice Layer:** ElevenLabs Conversational AI (STT + TTS)
 - **Agent Backend:** LangGraph (multi-step workflow orchestration)
@@ -12,37 +14,79 @@ Government Citizen Services Voice Agent — an AI-powered multilingual voice age
 - **Dashboard:** Streamlit
 - **Language:** Python 3.11+
 
+## Architecture
+```
+ElevenLabs (platform-native):          LangGraph (custom intelligence):
+├─ Voice (STT/TTS)                     ├─ Intent classification (GPT-4o-mini)
+├─ Language detection (system tool)     ├─ Multi-step service routing
+├─ Auth gating (workflow dispatch)      ├─ Tool orchestration (API calls)
+└─ Degradation fallback                ├─ Deterministic tool chaining
+                                       ├─ Conversation state (MemorySaver)
+                                       └─ Prompt versioning
+
+Two FastAPI servers:
+├─ api/server.py    (port 8001) — Government backend: auth, handoff, guest FAQ, citizen DB
+└─ agent/server.py  (port 8000) — Custom LLM proxy: ElevenLabs → LangGraph → SSE stream
+```
+
 ## Project Structure
 ```
 /agent              — LangGraph agent core
-  /prompts          — Versioned system prompts
-  /tools            — Agent tool definitions (status check, appointment, etc.)
-/api                — FastAPI server (Custom LLM bridge for ElevenLabs)
-/dashboard          — Streamlit analytics app
-/docs               — Architecture docs, flow diagrams
-/tests              — Unit and integration tests
-  /eval             — Automated conversation evaluation framework
+  /nodes            — Graph node implementations (intent_classify, status_check, etc.)
+  /prompts          — Versioned system prompts (v1.0/system_prompt_tr.md, _en.md)
+  /tools            — Validators (tc_kimlik.py, app_ref.py)
+  config.py         — AgentConfig dataclass
+  conversation.py   — Direct ElevenLabs conversation (TO BE REMOVED in ISSUE-08)
+  deploy.py         — Programmatic agent deploy to ElevenLabs
+  graph.py          — LangGraph StateGraph definition
+  logging_config.py — PII redaction logging
+  server.py         — Custom LLM proxy (/v1/chat/completions SSE)
+  state.py          — AgentState TypedDict
+/api                — Government backend
+  auth.py           — POST /auth/verify/tc-kimlik, /auth/verify/app-ref
+  handoff.py        — POST /handoff, POST /guest/info
+  models.py         — SQLAlchemy models (Citizen, AuthAuditLog)
+  seed_data.py      — 23 citizen records seeder
+  server.py         — FastAPI app (port 8001)
+/dashboard          — Streamlit analytics app (planned)
+/data               — citizens.db (SQLite, gitignored)
+/docs               — auth_flow.md, conversation_flow.md
+/tests              — 77 tests total
+  conftest.py       — Shared test DB setup with per-test audit log cleanup
+  /eval             — Automated conversation evaluation (planned)
 ```
 
 ## Key Design Decisions
-- KVKK (Turkish GDPR) compliance required — TC Kimlik must be masked in all logs
-- Layered graceful degradation (4 levels) for high availability
-- Prompt versioning tracked per conversation for data-driven optimization
-- Cost per call tracked and displayed in dashboard (AI vs human agent ROI)
+- **ElevenLabs Workflows for auth gating** — deterministic dispatch tool + subagent isolation (not LLM-based)
+- **LangGraph for intelligence** — intent routing, tool chaining, state management (what ElevenLabs native can't guarantee)
+- **LangGraph's core differentiator:** deterministic tool chaining (status "additional_docs_needed" → auto RAG query, "rejected" → appeal guidance)
+- **Single multilingual agent** with language_presets — one endpoint, auto language detection
+- **KVKK compliance** — PII redaction in all logs, TC Kimlik stored as SHA-256 hash, audit trail with no raw PII
+- **Prompt versioning** tracked per conversation for data-driven optimization
+- **MemorySaver checkpointer** keyed by conversation_id for state persistence across turns
 
 ## README Policy
 - README contains the FULL target project structure — not just what exists today
-- As new files are created in each issue, they should already be reflected in README
 - Never strip future/planned items from README — an evaluator should see the full vision upfront
 
 ## Development Guidelines
 - Always use `from agent.logging_config import get_logger` — never use `print()` or raw `logging`
 - PII redaction is automatic — TC Kimlik (11 digits) and DOB patterns are masked before log output
 - Use `.env` for secrets, never commit API keys
-- All conversation logs must redact personal data (TC Kimlik, DOB)
 - System prompts live in versioned files under `/agent/prompts/`
-- Tests runnable via `python -m pytest tests/`
-- Eval suite via `python -m tests.eval`
+- Shared node utilities in `agent/nodes/utils.py` (e.g., mark_completed)
+- `load_dotenv()` is called once in `agent/graph.py` — not in individual nodes
+- Tests: `python -m pytest tests/ -v` (77 tests, all passing)
+- Test DB: in-memory SQLite via conftest.py, audit log cleaned per test
+
+## User Preferences (for Claude)
+- User communicates in Turkish
+- User does manual git commits — provide commit messages with Co-Authored-By line, never auto-commit
+- Update CLAUDE.md after every development step
+- Update issues.md task checkboxes as work completes
+- Think like a senior FDE — business value over over-engineering
+- Ask questions before making assumptions
+- When editing README, keep full target structure (don't strip planned items)
 
 ## How to Run
 ```bash
@@ -53,80 +97,51 @@ pip install -r requirements.txt
 
 # 2. Configure environment
 cp .env.example .env
-# Fill in your API keys in .env
+# Fill in: ELEVENLABS_API_KEY, ELEVENLABS_AGENT_ID, OPENAI_API_KEY
 
 # 3. Seed the citizen database
 python -m api.seed_data
 
 # 4. Start servers (two separate terminals)
-uvicorn api.server:app --reload --port 8001    # Government API (auth, handoff, guest)
-uvicorn agent.server:app --reload --port 8000  # Custom LLM proxy (LangGraph → ElevenLabs)
+uvicorn api.server:app --reload --port 8001    # Government API
+uvicorn agent.server:app --reload --port 8000  # Custom LLM proxy
 
-# 5. Common commands (or use Makefile if `make` is available)
-make test              # Run unit tests
-make test-live         # Run live API + simulation tests
-make deploy            # Run tests, then deploy to ElevenLabs
-make deploy-dry        # Preview deploy without applying
+# 5. Deploy agent to ElevenLabs
+python -m agent.deploy           # Deploy multilingual agent
+python -m agent.deploy --dry-run # Preview without deploying
+
+# 6. Run tests
+make test              # Unit tests (no API keys needed for most)
+make test-live         # Live API + simulation tests
 ```
 
-## Server Architecture
-- **`api/server.py` (port 8001)** — Government backend: auth endpoints, handoff, guest FAQ, citizen DB
-- **`agent/server.py` (port 8000)** — Custom LLM proxy: receives ElevenLabs requests, runs LangGraph, streams SSE back
-
 ## Current Status
-- ISSUE-01: Project Setup & ElevenLabs Agent Initialization — COMPLETE
-  - [x] CLAUDE.md, .gitignore, .env.example
-  - [x] Project folder structure + requirements.txt
-  - [x] ElevenLabs agent config + conversation manager
-  - [x] Agent connection tests (unit + live)
-  - [x] README updated with setup instructions and full target structure
-  - [x] Structured logging with PII redaction filter
-  - [x] Live agent connection test — PASSED
-- ISSUE-02: Agent Persona & Base Conversation Flow — COMPLETE
-  - [x] System prompts v1.0 (TR + EN) with 7 intents, guardrails, out-of-scope handling
-  - [x] Prompt loader with version management
-  - [x] Conversation flow design — state diagram, intent routing, auth flow, out-of-scope handling
-  - [x] Programmatic agent deploy via API (`python -m agent.deploy`)
-  - [x] Intent detection tests — 11 simulated scenarios (7 intents + EN + out-of-scope + guardrail + multi-intent), all passing
-  - [x] EN agent deployed and verified
-  - [x] Transcript visibility in test output
-- ISSUE-03: Multilingual Voice Support (Turkish + English) — COMPLETE
-  - [x] Deploy script refactored for single multilingual agent with language_presets
-  - [x] Language detection system tool enabled
-  - [x] EN language preset with first message override
-  - [x] Language detection tests — 5 scenarios (TR, EN, EN status, TR→EN switch, EN→TR switch), all passing
-  - [x] Conversation flow docs updated with language management section
-  - [x] issues.md updated
-- ISSUE-03: COMPLETE
-- ISSUE-04: Caller Identity Verification Flow Design — IN PROGRESS
-  - [x] Auth flow design doc — workflow-based deterministic auth, KVKK compliance, security boundaries
-  - [x] TC Kimlik checksum validator with masking utility (13 tests passing)
-  - [x] issues.md updated
-- ISSUE-04: COMPLETE
-- ISSUE-05: Implement Authentication Logic — IN PROGRESS
-  - Scope: Auth endpoint built independently, LangGraph integration deferred to ISSUE-07/08
-  - DB: SQLite + SQLAlchemy ORM (production-ready abstraction)
-  - [x] SQLAlchemy models (Citizen + AuthAuditLog) + seed data (23 records, 5 statuses, 2 languages)
-  - [x] FastAPI auth endpoints (POST /auth/verify/tc-kimlik, POST /auth/verify/app-ref)
-  - [x] App ref format validator
-  - [x] Audit logging + progressive failure guidance + safe citizen profile (no raw PII)
-  - [x] Auth endpoint tests — 20 tests (TC Kimlik, app ref, progressive guidance, PII safety, audit trail)
-  - [x] issues.md updated
-- ISSUE-05: COMPLETE (auth endpoint scope — LangGraph integration deferred to ISSUE-07/08)
-- ISSUE-06: Authentication Failure Handling & Human Handoff — IN PROGRESS
-  - Scope: Handoff endpoint + guest mode built independently. Frustration detection + workflow retry deferred to ISSUE-07/08.
-  - [x] Human handoff endpoint (POST /handoff) with audit logging and reason codes
-  - [x] Guest mode endpoint (POST /guest/info) with bilingual FAQ (TR + EN), auth-required flagging
-  - [x] issues.md updated
-- ISSUE-06: COMPLETE (endpoint scope — workflow integration deferred to ISSUE-07/08)
-- ISSUE-07: LangGraph Multi-Step Agent Workflow — IN PROGRESS
-  - Architecture: ElevenLabs (voice, language detection, auth gating) + LangGraph (intent routing, tool orchestration, RAG, state)
-  - LangGraph serves as Custom LLM backend via OpenAI-compatible `/v1/chat/completions` SSE endpoint
-  - Pattern from FDE blog: receive messages → run agent → stream filtered SSE chunks
-  - [x] State schema (AgentState TypedDict) — messages, auth, intent, completed_intents, prompt_version
-  - [x] Graph skeleton — 8 nodes, conditional routing by intent, pending intent check
-  - [x] Node implementations — LLM intent classification, deterministic tool chaining (status→docs), all 7 service nodes
-  - [x] Custom LLM proxy — FastAPI `/v1/chat/completions` SSE endpoint, MemorySaver checkpointer, conversation_id-based state persistence
-  - [x] 24 tests — node isolation (intent, status chaining, appointment, escalate, complaint, document), graph routing, full flow, SSE proxy
-  - [x] issues.md updated
-- ISSUE-07: COMPLETE
+
+### Completed Issues
+- **ISSUE-01:** Project Setup — repo structure, .env, requirements, logging with PII redaction
+- **ISSUE-02:** Agent Persona — system prompts v1.0 (TR+EN), 7 intents, guardrails, deploy script, 11 simulation tests
+- **ISSUE-03:** Multilingual — single agent with language_presets, language detection system tool, 5 language tests
+- **ISSUE-04:** Auth Flow Design — workflow-based deterministic auth (ElevenLabs blog pattern), KVKK compliance, TC Kimlik checksum
+- **ISSUE-05:** Auth Implementation — SQLite+SQLAlchemy, FastAPI auth endpoints, 20 tests, progressive failure guidance
+- **ISSUE-06:** Failure Handling — handoff endpoint, guest mode FAQ, 10 tests
+- **ISSUE-07:** LangGraph Workflow — 8-node graph, LLM intent classification, deterministic tool chaining, Custom LLM proxy with SSE streaming, MemorySaver checkpointer, 24 tests
+
+### Next: ISSUE-08 — Connect LangGraph to ElevenLabs Voice
+Remaining tasks:
+- [ ] System tool calls (end_call, transfer_to_number) in OpenAI function call format from escalate node
+- [ ] Buffer words for slow processing ("Bir saniye bakıyorum... ")
+- [ ] Remove agent/conversation.py (replaced by Custom LLM proxy)
+- [ ] Update deploy script to configure Custom LLM endpoint on ElevenLabs
+- [ ] Set up public URL (ngrok) for ElevenLabs to reach our server
+- [ ] End-to-end voice test
+- [ ] Graceful degradation (at least Level 0 + Level 2)
+- [ ] Latency measurement
+
+### Remaining Issues (not started)
+- ISSUE-09: Define Agent Tools & Function Schemas
+- ISSUE-10-12: RAG Pipeline (Pinecone)
+- ISSUE-13-15: Tool Calling & Integrations (Mock Gov API)
+- ISSUE-16-18: Conversation Management
+- ISSUE-19-22: Analytics Dashboard (Streamlit)
+- ISSUE-23-25: Testing & Quality
+- ISSUE-26-28: Documentation & Demo
