@@ -70,3 +70,4 @@ python -m agent.conversation
 - ISSUE-02: Agent Persona & Base Conversation Flow — IN PROGRESS
   - [x] System prompts v1.0 (TR + EN) with 7 intents, guardrails, out-of-scope handling
   - [x] Prompt loader with version management
+  - [x] Conversation flow design — state diagram, intent routing, auth flow, out-of-scope handling
