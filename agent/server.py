@@ -13,6 +13,7 @@ Reference:
 """
 
 import json
+import time
 import uuid
 
 from dotenv import load_dotenv
@@ -26,13 +27,74 @@ from langgraph.checkpoint.memory import MemorySaver
 
 from agent.graph import build_graph
 from agent.logging_config import get_logger
-from agent.prompts.loader import get_latest_version
+from agent.prompts.loader import load_system_prompt, get_latest_version
 
 logger = get_logger(__name__)
 
 # Build graph with checkpointer for state persistence across turns
 checkpointer = MemorySaver()
 _compiled_graph = build_graph(checkpointer=checkpointer)
+
+
+# --- Circuit breaker (graceful degradation) ---
+#
+# Tracks consecutive LangGraph failures. When threshold is exceeded,
+# proxy switches to Level 1 degradation: direct OpenAI call with
+# system prompt, bypassing the graph.
+#
+# Levels:
+#   0 — Healthy: full LangGraph agent
+#   1 — Degraded: direct OpenAI LLM call (bypass graph)
+#   2 — Down: ElevenLabs falls back to its default agent
+#       (configured via backup_llm_config in deploy script)
+#
+
+_CB_THRESHOLD = 3          # consecutive failures before opening circuit
+_CB_COOLDOWN_SECONDS = 60  # seconds before retrying LangGraph
+_cb_failures = 0
+_cb_opened_at: float | None = None
+
+
+def _cb_record_success() -> None:
+    """Reset circuit breaker on successful graph execution."""
+    global _cb_failures, _cb_opened_at
+    if _cb_failures > 0:
+        logger.info(f"Circuit breaker reset after {_cb_failures} failures")
+    _cb_failures = 0
+    _cb_opened_at = None
+
+
+def _cb_record_failure() -> None:
+    """Record a graph failure. Opens circuit after threshold."""
+    global _cb_failures, _cb_opened_at
+    _cb_failures += 1
+    if _cb_failures >= _CB_THRESHOLD and _cb_opened_at is None:
+        _cb_opened_at = time.time()
+        logger.warning(f"Circuit breaker OPEN — {_cb_failures} consecutive failures, switching to Level 1")
+
+
+def _cb_is_open() -> bool:
+    """Check if circuit breaker is open (Level 1 degradation active).
+
+    Auto-closes after cooldown to allow retrying LangGraph.
+    """
+    global _cb_failures, _cb_opened_at
+    if _cb_failures < _CB_THRESHOLD:
+        return False
+    # Allow retry after cooldown
+    if _cb_opened_at and (time.time() - _cb_opened_at) > _CB_COOLDOWN_SECONDS:
+        logger.info("Circuit breaker cooldown expired — retrying LangGraph")
+        _cb_failures = 0
+        _cb_opened_at = None
+        return False
+    return True
+
+
+def _cb_status() -> dict:
+    """Return circuit breaker state for health endpoint."""
+    if _cb_is_open():
+        return {"level": 1, "label": "degraded", "failures": _cb_failures}
+    return {"level": 0, "label": "healthy", "failures": _cb_failures}
 
 
 app = FastAPI(
@@ -107,6 +169,48 @@ def _buffer_word(language: str) -> str:
     return "Bir saniye bakiyorum... "
 
 
+# --- Level 1 fallback (direct OpenAI call, bypass LangGraph) ---
+
+async def _level1_fallback(messages: list, language: str):
+    """Level 1 degradation: direct OpenAI call with system prompt.
+
+    Bypasses LangGraph graph — no intent routing, no tool chaining,
+    no deterministic flows. Just a simple LLM conversation with the
+    system prompt for basic citizen guidance.
+    """
+    from openai import AsyncOpenAI
+
+    system_prompt = load_system_prompt(language=language, version=get_latest_version())
+    openai_messages = [{"role": "system", "content": system_prompt}]
+
+    for m in messages:
+        if isinstance(m, HumanMessage):
+            openai_messages.append({"role": "user", "content": m.content})
+        elif isinstance(m, AIMessage):
+            openai_messages.append({"role": "assistant", "content": m.content or ""})
+
+    try:
+        client = AsyncOpenAI()
+        response = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=openai_messages,
+            stream=True,
+            temperature=0.7,
+            max_tokens=512,
+        )
+        async for chunk in response:
+            delta_content = chunk.choices[0].delta.content
+            if delta_content:
+                yield delta_content
+
+    except Exception as e:
+        logger.error(f"Level 1 fallback error: {e}")
+        if language == "en":
+            yield "We are experiencing technical difficulties. Please try again later."
+        else:
+            yield "Teknik bir sorun yasiyoruz. Lutfen daha sonra tekrar deneyin."
+
+
 # --- Endpoint ---
 
 @app.post("/v1/chat/completions")
@@ -140,61 +244,66 @@ async def chat_completions(request: ChatCompletionRequest):
         response_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
         has_tool_calls = False
 
-        # Always send role + buffer word before LangGraph starts.
-        # LangGraph LLM calls take 1-3s — buffer word keeps the
-        # conversation natural while the response is being generated.
+        # Always send role + buffer word before processing starts.
+        # LLM calls take 1-3s — buffer word keeps the conversation
+        # natural while the response is being generated.
         yield sse_chunk(response_id, {"role": "assistant"})
         yield sse_chunk(response_id, {"content": _buffer_word(language)})
 
-        try:
-            graph_input = {"messages": latest_messages}
+        if _cb_is_open():
+            # Level 1 degradation: bypass LangGraph, direct OpenAI call
+            logger.warning(f"Circuit breaker open — using Level 1 fallback | conv={conversation_id}")
+            async for chunk in _level1_fallback(lc_messages, language):
+                yield sse_chunk(response_id, {"content": chunk})
+        else:
+            try:
+                graph_input = {"messages": latest_messages}
 
-            if auth_status != "unauthenticated":
-                graph_input["auth_status"] = auth_status
-            if citizen_profile:
-                graph_input["citizen_profile"] = citizen_profile
+                if auth_status != "unauthenticated":
+                    graph_input["auth_status"] = auth_status
+                if citizen_profile:
+                    graph_input["citizen_profile"] = citizen_profile
 
-            async for message_chunk, metadata in graph.astream(
-                graph_input,
-                config=config,
-                stream_mode="messages",
-            ):
-                node = metadata.get("langgraph_node", "")
-                content = getattr(message_chunk, "content", None)
-                tool_calls = getattr(message_chunk, "additional_kwargs", {}).get("tool_calls")
+                async for message_chunk, metadata in graph.astream(
+                    graph_input,
+                    config=config,
+                    stream_mode="messages",
+                ):
+                    node = metadata.get("langgraph_node", "")
+                    content = getattr(message_chunk, "content", None)
+                    tool_calls = getattr(message_chunk, "additional_kwargs", {}).get("tool_calls")
 
-                # Skip routing/classification nodes — only forward service responses
-                if node in ("intent_classify", "service_router"):
-                    continue
+                    # Skip routing/classification nodes
+                    if node in ("intent_classify", "service_router"):
+                        continue
 
-                # Forward tool_calls (e.g. transfer_to_number from escalate node)
-                if tool_calls:
-                    has_tool_calls = True
-                    tool_calls_delta = [
-                        {
-                            "index": i,
-                            "id": tc.get("id", f"call_{uuid.uuid4().hex[:8]}"),
-                            "type": "function",
-                            "function": {
-                                "name": tc["function"]["name"],
-                                "arguments": tc["function"]["arguments"],
-                            },
-                        }
-                        for i, tc in enumerate(tool_calls)
-                    ]
-                    yield sse_chunk(response_id, {"tool_calls": tool_calls_delta})
+                    # Forward tool_calls (e.g. transfer_to_number)
+                    if tool_calls:
+                        has_tool_calls = True
+                        tool_calls_delta = [
+                            {
+                                "index": i,
+                                "id": tc.get("id", f"call_{uuid.uuid4().hex[:8]}"),
+                                "type": "function",
+                                "function": {
+                                    "name": tc["function"]["name"],
+                                    "arguments": tc["function"]["arguments"],
+                                },
+                            }
+                            for i, tc in enumerate(tool_calls)
+                        ]
+                        yield sse_chunk(response_id, {"tool_calls": tool_calls_delta})
 
-                # Forward text content
-                if content:
-                    yield sse_chunk(response_id, {"content": content})
+                    if content:
+                        yield sse_chunk(response_id, {"content": content})
 
-        except Exception as e:
-            logger.error(f"Graph execution error: {e}")
-            yield sse_chunk(response_id, {"content": "Bir hata olustu. Lutfen tekrar deneyin."})
+                _cb_record_success()
 
-        # finish_reason signals ElevenLabs how to handle the response:
-        # "tool_calls" → execute the function call (e.g. transfer_to_number)
-        # "stop"       → normal end of turn
+            except Exception as e:
+                logger.error(f"Graph execution error: {e}")
+                _cb_record_failure()
+                yield sse_chunk(response_id, {"content": "Bir hata olustu. Lutfen tekrar deneyin."})
+
         finish_reason = "tool_calls" if has_tool_calls else "stop"
         yield sse_chunk(response_id, {}, finish_reason=finish_reason)
         yield "data: [DONE]\n\n"
@@ -204,4 +313,10 @@ async def chat_completions(request: ChatCompletionRequest):
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "agent": "langgraph-citizen-services"}
+    cb = _cb_status()
+    return {
+        "status": cb["label"],
+        "agent": "langgraph-citizen-services",
+        "degradation_level": cb["level"],
+        "consecutive_failures": cb["failures"],
+    }

@@ -8,6 +8,7 @@ and Custom LLM proxy SSE output.
 
 import json
 import os
+import time
 
 import pytest
 from dotenv import load_dotenv
@@ -286,10 +287,17 @@ class TestCustomLLMProxy:
         from fastapi.testclient import TestClient
         from agent.server import app
         self.client = TestClient(app)
+        # Reset circuit breaker to ensure clean state between tests
+        import agent.server as srv
+        srv._cb_failures = 0
+        srv._cb_opened_at = None
 
     def test_health(self):
         r = self.client.get("/health")
-        assert r.json()["status"] == "ok"
+        data = r.json()
+        assert data["status"] == "healthy"
+        assert data["degradation_level"] == 0
+        assert data["consecutive_failures"] == 0
 
     @pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     def test_sse_format(self):
@@ -386,3 +394,60 @@ class TestCustomLLMProxy:
 
         full_response = "".join(content_parts).lower()
         assert "fatma" in full_response or "onay" in full_response or "approved" in full_response
+
+
+class TestCircuitBreaker:
+    """Test circuit breaker / graceful degradation."""
+
+    def setup_method(self):
+        """Reset circuit breaker state before each test."""
+        import agent.server as srv
+        srv._cb_failures = 0
+        srv._cb_opened_at = None
+
+    def test_starts_healthy(self):
+        from agent.server import _cb_status, _cb_is_open
+        assert _cb_is_open() is False
+        assert _cb_status()["level"] == 0
+        assert _cb_status()["label"] == "healthy"
+
+    def test_opens_after_threshold(self):
+        from agent.server import _cb_record_failure, _cb_is_open, _cb_status
+        for _ in range(3):
+            _cb_record_failure()
+        assert _cb_is_open() is True
+        assert _cb_status()["level"] == 1
+        assert _cb_status()["label"] == "degraded"
+
+    def test_success_resets(self):
+        from agent.server import _cb_record_failure, _cb_record_success, _cb_is_open
+        for _ in range(3):
+            _cb_record_failure()
+        assert _cb_is_open() is True
+        _cb_record_success()
+        assert _cb_is_open() is False
+
+    def test_cooldown_auto_resets(self):
+        import agent.server as srv
+        from agent.server import _cb_record_failure, _cb_is_open
+        for _ in range(3):
+            _cb_record_failure()
+        assert _cb_is_open() is True
+        # Simulate cooldown expiry
+        srv._cb_opened_at = time.time() - 61
+        assert _cb_is_open() is False
+
+    def test_health_reflects_circuit_state(self):
+        from fastapi.testclient import TestClient
+        from agent.server import app, _cb_record_failure
+        client = TestClient(app)
+
+        r = client.get("/health")
+        assert r.json()["degradation_level"] == 0
+
+        for _ in range(3):
+            _cb_record_failure()
+
+        r = client.get("/health")
+        assert r.json()["degradation_level"] == 1
+        assert r.json()["status"] == "degraded"
