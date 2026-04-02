@@ -123,17 +123,21 @@ async def chat_completions(request: ChatCompletionRequest):
         sent_role = False
 
         try:
+            # Build input — only pass messages + auth context from ElevenLabs.
+            # Other state fields (completed_intents, current_intent) are
+            # preserved by the checkpointer across turns.
+            graph_input = {"messages": latest_messages}
+
+            # Auth context from ElevenLabs extra_body — only set if provided,
+            # otherwise checkpointer preserves previous values.
+            if auth_status != "unauthenticated":
+                graph_input["auth_status"] = auth_status
+            if citizen_profile:
+                graph_input["citizen_profile"] = citizen_profile
+
             # Stream with message-level granularity
             async for message_chunk, metadata in graph.astream(
-                {
-                    "messages": latest_messages,
-                    "auth_status": auth_status,
-                    "citizen_profile": citizen_profile,
-                    "current_intent": "unknown",
-                    "completed_intents": [],
-                    "prompt_version": get_latest_version(),
-                    "language": "tr",
-                },
+                graph_input,
                 config=config,
                 stream_mode="messages",
             ):

@@ -16,6 +16,7 @@ from langchain_openai import ChatOpenAI
 
 from agent.state import AgentState
 from agent.logging_config import get_logger
+from agent.nodes.utils import mark_completed
 
 logger = get_logger(__name__)
 
@@ -43,7 +44,7 @@ def status_check(state: AgentState) -> dict:
                "Basvuru durumunuzu kontrol etmek icin kimlik dogrulamasi gerekiyor.")
         return {
             "messages": [AIMessage(content=msg)],
-            "completed_intents": _mark_completed(state, "status_check"),
+            "completed_intents": mark_completed(state, "status_check"),
         }
 
     app_ref = profile.get("application_ref", "")
@@ -105,12 +106,7 @@ def status_check(state: AgentState) -> dict:
 
     return {
         "messages": [AIMessage(content=msg)],
-        "completed_intents": _mark_completed(state, "status_check"),
+        "completed_intents": mark_completed(state, "status_check"),
     }
 
 
-def _mark_completed(state: AgentState, intent: str) -> list:
-    completed = list(state.get("completed_intents", []))
-    if intent not in completed:
-        completed.append(intent)
-    return completed

@@ -9,6 +9,7 @@ function call for the transfer_to_number system tool.
 from langchain_core.messages import AIMessage
 from agent.state import AgentState
 from agent.logging_config import get_logger
+from agent.nodes.utils import mark_completed
 
 logger = get_logger(__name__)
 
@@ -28,12 +29,5 @@ def escalate(state: AgentState) -> dict:
 
     return {
         "messages": [AIMessage(content=msg)],
-        "completed_intents": _mark_completed(state, "escalate"),
+        "completed_intents": mark_completed(state, "escalate"),
     }
-
-
-def _mark_completed(state: AgentState, intent: str) -> list:
-    completed = list(state.get("completed_intents", []))
-    if intent not in completed:
-        completed.append(intent)
-    return completed

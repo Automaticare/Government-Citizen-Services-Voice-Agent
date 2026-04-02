@@ -55,12 +55,23 @@ pip install -r requirements.txt
 cp .env.example .env
 # Fill in your API keys in .env
 
-# 3. Common commands (or use Makefile if `make` is available)
+# 3. Seed the citizen database
+python -m api.seed_data
+
+# 4. Start servers (two separate terminals)
+uvicorn api.server:app --reload --port 8001    # Government API (auth, handoff, guest)
+uvicorn agent.server:app --reload --port 8000  # Custom LLM proxy (LangGraph → ElevenLabs)
+
+# 5. Common commands (or use Makefile if `make` is available)
 make test              # Run unit tests
 make test-live         # Run live API + simulation tests
 make deploy            # Run tests, then deploy to ElevenLabs
 make deploy-dry        # Preview deploy without applying
 ```
+
+## Server Architecture
+- **`api/server.py` (port 8001)** — Government backend: auth endpoints, handoff, guest FAQ, citizen DB
+- **`agent/server.py` (port 8000)** — Custom LLM proxy: receives ElevenLabs requests, runs LangGraph, streams SSE back
 
 ## Current Status
 - ISSUE-01: Project Setup & ElevenLabs Agent Initialization — COMPLETE

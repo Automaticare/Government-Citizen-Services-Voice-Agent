@@ -13,6 +13,9 @@ LangGraph handles: intent routing, tool orchestration, RAG, business logic.
 
 from typing import Literal
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from langgraph.graph import END, START, StateGraph
 
 from agent.state import AgentState, Intent

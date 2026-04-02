@@ -5,9 +5,6 @@ Uses LLM to classify the caller's intent from conversation context.
 Returns one of the supported intent types.
 """
 
-from dotenv import load_dotenv
-load_dotenv()
-
 from langchain_core.messages import SystemMessage
 from langchain_openai import ChatOpenAI
 

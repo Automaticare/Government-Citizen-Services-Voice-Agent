@@ -7,6 +7,7 @@ Records citizen complaint and provides confirmation.
 from langchain_core.messages import AIMessage
 from agent.state import AgentState
 from agent.logging_config import get_logger
+from agent.nodes.utils import mark_completed
 
 logger = get_logger(__name__)
 
@@ -33,12 +34,5 @@ def complaint(state: AgentState) -> dict:
 
     return {
         "messages": [AIMessage(content=msg)],
-        "completed_intents": _mark_completed(state, "complaint"),
+        "completed_intents": mark_completed(state, "complaint"),
     }
-
-
-def _mark_completed(state: AgentState, intent: str) -> list:
-    completed = list(state.get("completed_intents", []))
-    if intent not in completed:
-        completed.append(intent)
-    return completed

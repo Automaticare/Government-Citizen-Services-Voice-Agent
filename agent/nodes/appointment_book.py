@@ -8,6 +8,7 @@ call a real government scheduling API.
 from langchain_core.messages import AIMessage
 from agent.state import AgentState
 from agent.logging_config import get_logger
+from agent.nodes.utils import mark_completed
 
 logger = get_logger(__name__)
 
@@ -31,7 +32,7 @@ def appointment_book(state: AgentState) -> dict:
                "Randevu almak icin kimlik dogrulamasi gerekiyor.")
         return {
             "messages": [AIMessage(content=msg)],
-            "completed_intents": _mark_completed(state, "appointment_book"),
+            "completed_intents": mark_completed(state, "appointment_book"),
         }
 
     first_name = profile.get("first_name", "")
@@ -52,12 +53,5 @@ def appointment_book(state: AgentState) -> dict:
 
     return {
         "messages": [AIMessage(content=msg)],
-        "completed_intents": _mark_completed(state, "appointment_book"),
+        "completed_intents": mark_completed(state, "appointment_book"),
     }
-
-
-def _mark_completed(state: AgentState, intent: str) -> list:
-    completed = list(state.get("completed_intents", []))
-    if intent not in completed:
-        completed.append(intent)
-    return completed

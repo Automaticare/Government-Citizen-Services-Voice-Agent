@@ -6,15 +6,13 @@ backed by a Pinecone RAG pipeline. For now, uses LLM with context
 from the system prompt.
 """
 
-from dotenv import load_dotenv
-load_dotenv()
-
 from langchain_core.messages import SystemMessage
 from langchain_openai import ChatOpenAI
 
 from agent.state import AgentState
 from agent.prompts.loader import load_system_prompt, get_latest_version
 from agent.logging_config import get_logger
+from agent.nodes.utils import mark_completed
 
 logger = get_logger(__name__)
 
@@ -38,12 +36,5 @@ def faq_answer(state: AgentState) -> dict:
 
     return {
         "messages": [response],
-        "completed_intents": _mark_completed(state, state.get("current_intent", "faq")),
+        "completed_intents": mark_completed(state, state.get("current_intent", "faq")),
     }
-
-
-def _mark_completed(state: AgentState, intent: str) -> list:
-    completed = list(state.get("completed_intents", []))
-    if intent not in completed:
-        completed.append(intent)
-    return completed

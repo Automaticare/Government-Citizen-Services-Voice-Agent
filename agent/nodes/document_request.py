@@ -7,6 +7,7 @@ Initiates document preparation via API.
 from langchain_core.messages import AIMessage
 from agent.state import AgentState
 from agent.logging_config import get_logger
+from agent.nodes.utils import mark_completed
 
 logger = get_logger(__name__)
 
@@ -22,7 +23,7 @@ def document_request(state: AgentState) -> dict:
                "Belge talebi icin kimlik dogrulamasi gerekiyor.")
         return {
             "messages": [AIMessage(content=msg)],
-            "completed_intents": _mark_completed(state, "document_request"),
+            "completed_intents": mark_completed(state, "document_request"),
         }
 
     first_name = profile.get("first_name", "")
@@ -40,12 +41,5 @@ def document_request(state: AgentState) -> dict:
 
     return {
         "messages": [AIMessage(content=msg)],
-        "completed_intents": _mark_completed(state, "document_request"),
+        "completed_intents": mark_completed(state, "document_request"),
     }
-
-
-def _mark_completed(state: AgentState, intent: str) -> list:
-    completed = list(state.get("completed_intents", []))
-    if intent not in completed:
-        completed.append(intent)
-    return completed
