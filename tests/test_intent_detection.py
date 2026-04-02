@@ -58,7 +58,7 @@ SCENARIOS = [
     {
         "name": "status_check_en",
         "persona": "You are a citizen. You want to check the status of your visa application. Be brief.",
-        "criteria": "Agent detected the application status check intent. Language of response does not matter at this stage.",
+        "criteria": "Agent detected the application status check intent and initiated the verification process.",
     },
     {
         "name": "out_of_scope_tr",

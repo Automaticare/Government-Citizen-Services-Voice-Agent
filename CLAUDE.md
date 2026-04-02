@@ -83,3 +83,4 @@ make deploy-dry        # Preview deploy without applying
   - [x] Deploy script refactored for single multilingual agent with language_presets
   - [x] Language detection system tool enabled
   - [x] EN language preset with first message override
+  - [x] Language detection tests — 5 scenarios (TR, EN, EN status, TR→EN switch, EN→TR switch), all passing
