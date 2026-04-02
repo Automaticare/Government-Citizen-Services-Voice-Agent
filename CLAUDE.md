@@ -71,3 +71,4 @@ python -m agent.conversation
   - [x] System prompts v1.0 (TR + EN) with 7 intents, guardrails, out-of-scope handling
   - [x] Prompt loader with version management
   - [x] Conversation flow design — state diagram, intent routing, auth flow, out-of-scope handling
+  - [x] Programmatic agent deploy via API (`python -m agent.deploy`)
