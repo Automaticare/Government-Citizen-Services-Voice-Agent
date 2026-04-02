@@ -100,3 +100,5 @@ make deploy-dry        # Preview deploy without applying
   - [x] App ref format validator
   - [x] Audit logging + progressive failure guidance + safe citizen profile (no raw PII)
   - [x] Auth endpoint tests — 20 tests (TC Kimlik, app ref, progressive guidance, PII safety, audit trail)
+  - [x] issues.md updated
+- ISSUE-05: COMPLETE (auth endpoint scope — LangGraph integration deferred to ISSUE-07/08)

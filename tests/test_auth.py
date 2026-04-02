@@ -5,24 +5,24 @@ Covers both verification methods, validation, audit logging,
 progressive guidance, and PII safety.
 """
 
-import os
-import tempfile
-
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from api.models import Base, Citizen, AuthAuditLog, get_db
 from api.server import app
 from api.seed_data import generate_valid_tc, hash_tc
 
 
-# --- Test DB setup (temp file SQLite, shared across connections) ---
+# --- Test DB setup (in-memory SQLite with shared connection via StaticPool) ---
 
-_test_db_file = os.path.join(tempfile.gettempdir(), "test_citizens.db")
-_test_db_url = f"sqlite:///{_test_db_file}"
-test_engine = create_engine(_test_db_url, connect_args={"check_same_thread": False})
+test_engine = create_engine(
+    "sqlite://",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
 TestSession = sessionmaker(bind=test_engine)
 
 
@@ -69,12 +69,6 @@ def setup_db():
     yield
 
     Base.metadata.drop_all(test_engine)
-    test_engine.dispose()
-    try:
-        if os.path.exists(_test_db_file):
-            os.remove(_test_db_file)
-    except PermissionError:
-        pass  # Windows file lock — temp file, cleaned up on reboot
 
 
 client = TestClient(app)

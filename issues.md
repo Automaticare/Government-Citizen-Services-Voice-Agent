@@ -163,28 +163,29 @@ Implement the caller identity verification logic designed in ISSUE-04. The agent
 **Scope decision:** Auth endpoint (FastAPI + SQLite) is built and tested independently. LangGraph/workflow tool integration happens in ISSUE-07/08 when Custom LLM bridge is ready. This follows real-world FDE practice: build backend first, integrate later.
 
 ## Tasks
-- [ ] Create mock citizen database (SQLite + SQLAlchemy ORM) with 20+ sample records:
+- [x] Create mock citizen database (SQLite + SQLAlchemy ORM) with 23 sample records:
   - Fields: tc_kimlik (hashed), first_name, last_name, date_of_birth, application_ref, application_status, language_preference
   - SQLAlchemy abstraction allows production switch to PostgreSQL via connection string change
 - [x] Implement TC Kimlik format validation (11 digits + checksum algorithm) — done in ISSUE-04
-- [ ] Implement application reference number format validation
-- [ ] Build FastAPI endpoint: `POST /auth/verify` that accepts credentials and returns auth status + citizen profile
-- [ ] Implement KVKK compliance in authentication:
-  - Mask sensitive fields (TC Kimlik, DOB) in all conversation logs — store only hashed versions
-  - Implement audit trail — log who accessed what data, when, and why (without logging the data itself)
-  - Add data retention TTL — auto-purge authentication session data after configurable period (default: 30 days)
+- [x] Implement application reference number format validation (YYYY-XX-NNNN)
+- [x] Build FastAPI endpoints: `POST /auth/verify/tc-kimlik` and `POST /auth/verify/app-ref`
+- [x] Implement KVKK compliance in authentication:
+  - TC Kimlik stored as SHA-256 hash in DB, masked in logs (via PII redaction filter)
+  - Audit trail (AuthAuditLog table) — no raw PII, only hashed citizen IDs
+  - Data retention TTL — schema ready, purge logic deferred to ISSUE-07/08
+- [x] 20 endpoint tests (TC Kimlik auth, app ref auth, progressive guidance, PII safety, audit trail)
 - *Deferred to ISSUE-07/08:*
   - [ ] Integrate authentication as a tool in the LangGraph agent workflow
   - [ ] Implement retry logic via ElevenLabs workflow edges (dynamic variable: auth_attempt_count)
   - [ ] Implement session state via LangGraph state management
 
 ## Acceptance Criteria
-- [ ] `POST /auth/verify` returns citizen profile on valid credentials
-- [ ] Invalid credentials return structured error with guidance message
-- [ ] TC Kimlik checksum rejects invalid numbers before DB lookup
-- [ ] TC Kimlik and DOB are masked/hashed in all stored logs
-- [ ] Audit trail captures all auth attempt events (no raw PII)
-- [ ] SQLAlchemy models are production-ready (migration-friendly schema)
+- [x] `POST /auth/verify/tc-kimlik` and `POST /auth/verify/app-ref` return citizen profile on valid credentials
+- [x] Invalid credentials return structured error with guidance message
+- [x] TC Kimlik checksum rejects invalid numbers before DB lookup
+- [x] TC Kimlik and DOB are masked/hashed in all stored logs
+- [x] Audit trail captures all auth attempt events (no raw PII)
+- [x] SQLAlchemy models are production-ready (migration-friendly schema)
 - *Deferred to ISSUE-07/08:*
   - [ ] Agent collects TC Kimlik via voice and validates format
   - [ ] After 3 failed attempts, agent offers human transfer
