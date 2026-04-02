@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:elevenlabs.io)",
+      "WebFetch(domain:pypi.org)",
+      "WebFetch(domain:github.com)"
+    ]
+  }
+}

@@ -36,5 +36,23 @@ Government Citizen Services Voice Agent — an AI-powered multilingual voice age
 - Tests runnable via `python -m pytest tests/`
 - Eval suite via `python -m tests.eval`
 
+## How to Run
+```bash
+# 1. Clone and setup
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+
+# 2. Configure environment
+cp .env.example .env
+# Fill in your API keys in .env
+
+# 3. Run a test conversation (requires microphone + speaker)
+python -m agent.conversation
+```
+
 ## Current Status
 - ISSUE-01: Project Setup & ElevenLabs Agent Initialization — IN PROGRESS
+  - [x] CLAUDE.md, .gitignore, .env.example
+  - [x] Project folder structure + requirements.txt
+  - [x] ElevenLabs agent config + conversation manager
