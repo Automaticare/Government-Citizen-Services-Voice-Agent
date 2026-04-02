@@ -35,12 +35,11 @@ Two FastAPI servers:
   /nodes            — Graph node implementations (intent_classify, status_check, etc.)
   /prompts          — Versioned system prompts (v1.0/system_prompt_tr.md, _en.md)
   /tools            — Validators (tc_kimlik.py, app_ref.py)
-  config.py         — AgentConfig dataclass
-  conversation.py   — Direct ElevenLabs conversation (TO BE REMOVED in ISSUE-08)
-  deploy.py         — Programmatic agent deploy to ElevenLabs
+  config.py         — AgentConfig dataclass (incl. custom_llm_url)
+  deploy.py         — Programmatic agent deploy to ElevenLabs (Custom LLM + backup LLM)
   graph.py          — LangGraph StateGraph definition
   logging_config.py — PII redaction logging
-  server.py         — Custom LLM proxy (/v1/chat/completions SSE)
+  server.py         — Custom LLM proxy (/v1/chat/completions SSE, circuit breaker, buffer words)
   state.py          — AgentState TypedDict
 /api                — Government backend
   auth.py           — POST /auth/verify/tc-kimlik, /auth/verify/app-ref
@@ -51,7 +50,7 @@ Two FastAPI servers:
 /dashboard          — Streamlit analytics app (planned)
 /data               — citizens.db (SQLite, gitignored)
 /docs               — auth_flow.md, conversation_flow.md
-/tests              — 77 tests total
+/tests              — 116 tests total
   conftest.py       — Shared test DB setup with per-test audit log cleanup
   /eval             — Automated conversation evaluation (planned)
 ```
@@ -64,6 +63,7 @@ Two FastAPI servers:
 - **KVKK compliance** — PII redaction in all logs, TC Kimlik stored as SHA-256 hash, audit trail with no raw PII
 - **Prompt versioning** tracked per conversation for data-driven optimization
 - **MemorySaver checkpointer** keyed by conversation_id for state persistence across turns
+- **Graceful degradation** — Level 0: full LangGraph, Level 1: direct OpenAI (circuit breaker after 3 failures, 60s cooldown), Level 2: ElevenLabs native fallback (backup_llm_config)
 
 ## README Policy
 - README contains the FULL target project structure — not just what exists today
@@ -76,7 +76,7 @@ Two FastAPI servers:
 - System prompts live in versioned files under `/agent/prompts/`
 - Shared node utilities in `agent/nodes/utils.py` (e.g., mark_completed)
 - `load_dotenv()` is called once in `agent/graph.py` — not in individual nodes
-- Tests: `python -m pytest tests/ -v` (77 tests, all passing)
+- Tests: `python -m pytest tests/ -v` (116 tests, all passing)
 - Test DB: in-memory SQLite via conftest.py, audit log cleaned per test
 
 ## User Preferences (for Claude)
@@ -125,16 +125,12 @@ make test-live         # Live API + simulation tests
 - **ISSUE-05:** Auth Implementation — SQLite+SQLAlchemy, FastAPI auth endpoints, 20 tests, progressive failure guidance
 - **ISSUE-06:** Failure Handling — handoff endpoint, guest mode FAQ, 10 tests
 - **ISSUE-07:** LangGraph Workflow — 8-node graph, LLM intent classification, deterministic tool chaining, Custom LLM proxy with SSE streaming, MemorySaver checkpointer, 24 tests
+- **ISSUE-08:** Connect LangGraph to ElevenLabs Voice — transfer_to_number system tool call, buffer words, circuit breaker (Level 0/1/2 degradation), Custom LLM deploy config, backup_llm_config, conversation.py removed
 
-### Next: ISSUE-08 — Connect LangGraph to ElevenLabs Voice
-Remaining tasks:
-- [ ] System tool calls (end_call, transfer_to_number) in OpenAI function call format from escalate node
-- [ ] Buffer words for slow processing ("Bir saniye bakıyorum... ")
-- [ ] Remove agent/conversation.py (replaced by Custom LLM proxy)
-- [ ] Update deploy script to configure Custom LLM endpoint on ElevenLabs
-- [ ] Set up public URL (ngrok) for ElevenLabs to reach our server
+### Next: ISSUE-08 — Remaining Manual Tasks
+- [ ] Set up public URL (ngrok http 8000) for ElevenLabs to reach our server
+- [ ] Deploy agent with Custom LLM endpoint (`CUSTOM_LLM_URL=<ngrok-url> python -m agent.deploy`)
 - [ ] End-to-end voice test
-- [ ] Graceful degradation (at least Level 0 + Level 2)
 - [ ] Latency measurement
 
 ### Remaining Issues (not started)
