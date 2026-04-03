@@ -256,9 +256,21 @@ async def chat_completions(request: ChatCompletionRequest):
     auth_status, citizen_profile = _extract_auth_state(request)
     language = _extract_language(request)
 
-    # Detect language from latest user message and check for language switch
+    # Detect language switch — only trigger once per actual switch.
+    # Check if the LATEST assistant message was already in the target language.
+    # If so, no switch needed (avoids infinite loop).
     prev_language = _detect_previous_language(request)
-    language_switched = prev_language is not None and language != prev_language
+    last_assistant_lang = None
+    for msg in reversed(request.messages):
+        if msg.role == "assistant" and msg.content:
+            last_assistant_lang = _detect_language(msg.content)
+            break
+
+    language_switched = (
+        prev_language is not None
+        and language != prev_language
+        and last_assistant_lang != language  # Don't re-switch if already switched
+    )
 
     logger.info(f"Custom LLM request | conv={conversation_id} | messages={len(request.messages)} | lang={language}")
     if language_switched:

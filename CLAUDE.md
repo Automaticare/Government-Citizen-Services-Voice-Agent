@@ -50,7 +50,7 @@ Two FastAPI servers:
 /dashboard          — Streamlit analytics app (planned)
 /data               — citizens.db (SQLite, gitignored)
 /docs               — auth_flow.md, conversation_flow.md
-/tests              — 116 tests total
+/tests              — 119 tests total (94 unit + 25 live API)
   conftest.py       — Shared test DB setup with per-test audit log cleanup
   /eval             — Automated conversation evaluation (planned)
 ```
@@ -76,7 +76,7 @@ Two FastAPI servers:
 - System prompts live in versioned files under `/agent/prompts/`
 - Shared node utilities in `agent/nodes/utils.py` (e.g., mark_completed)
 - `load_dotenv()` is called once in `agent/graph.py` — not in individual nodes
-- Tests: `python -m pytest tests/ -v` (116 tests, all passing)
+- Tests: `python -m pytest tests/ -v` (119 tests total — 94 unit + 25 live API tests)
 - Test DB: in-memory SQLite via conftest.py, audit log cleaned per test
 
 ## User Preferences (for Claude)
@@ -136,6 +136,8 @@ make test-live         # Live API + simulation tests
 ### Remaining Issues (not started)
 - ISSUE-09: Define Agent Tools & Function Schemas
 - ISSUE-10-12: RAG Pipeline (Pinecone)
+  ↓
+- **ISSUE-15B: Twilio Phone Integration** (after ISSUE-15, before ISSUE-16)
 - ISSUE-13-15: Tool Calling & Integrations (Mock Gov API)
 - ISSUE-16-18: Conversation Management
 - ISSUE-19-22: Analytics Dashboard (Streamlit)

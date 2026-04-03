@@ -569,6 +569,47 @@ Handle edge cases and unexpected scenarios in the tool calling flow to ensure th
 
 ---
 
+# ISSUE-15B: Twilio Phone Integration
+
+## Module
+Voice Infrastructure
+
+## Priority
+P1
+
+## Dependencies
+ISSUE-08, ISSUE-15
+
+## Description
+Integrate Twilio to enable real phone calls to the voice agent. This transforms the demo from a browser-only widget test into a production-grade voice system where citizens dial a real phone number, get authenticated, and receive service — all over a phone call.
+
+**FDE impact:** Showing a real phone transfer in the demo video is the difference between "I built a chatbot with voice" and "I built a production telephony system." Deutsche Telekom, Revolut, Klarna — all Oscar's reference accounts are phone-based.
+
+## Tasks
+- [ ] Create Twilio trial account and get a phone number
+- [ ] Configure Twilio SIP trunk or phone number to connect to ElevenLabs agent
+- [ ] Enable `system__caller_id` dynamic variable for caller identification
+- [ ] Enable ENABLE_PHONE_TRANSFER=true in escalate node — real transfer to operator number
+- [ ] Test full telephony flow: dial in → STT → LangGraph → TTS → voice out
+- [ ] Test language detection via phone (no widget dropdown — STT auto-detects)
+- [ ] Test human transfer via phone (transfer_to_number system tool)
+- [ ] Measure end-to-end latency over phone vs widget
+
+## Acceptance Criteria
+- [ ] A real phone number can be dialed and reaches the voice agent
+- [ ] Full conversation works over phone: greeting → intent → service → closing
+- [ ] Human transfer works: agent says goodbye, call transfers to operator number
+- [ ] Language detection works via audio (no manual selection needed)
+- [ ] Latency is acceptable for natural phone conversation
+
+## Notes
+- Twilio trial is free — limited to verified numbers but sufficient for demo
+- ElevenLabs has native Twilio integration: https://elevenlabs.io/docs/eleven-agents/customization/personalization/twilio-personalization
+- This also unlocks `system__caller_id` for potential caller ID-based silent auth (future enhancement)
+- Demo video should show: phone ringing → agent answers → conversation → transfer
+
+---
+
 # ISSUE-16: Conversation Context Management
 
 ## Module

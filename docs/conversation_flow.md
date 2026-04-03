@@ -181,6 +181,17 @@
 
 For a government service: one phone number, one agent, it just works. Adding Arabic later = one preset addition, not a new agent deployment.
 
+### Known Behavior: Widget vs Production Language Switching
+
+| Environment | STT Language Selection | Mid-Call Switch |
+|-------------|----------------------|-----------------|
+| **Widget / Test UI** | User selects language from dropdown before call starts. STT is locked to that language for the duration. Switching requires selecting a different language and starting a new call. | Not supported — widget limitation |
+| **Telephony (Twilio/SIP)** | STT auto-detects language from audio. `language_detection` system tool triggers switch when user speaks a different language. | Supported — platform-native |
+
+**Impact on testing:** When testing via dashboard widget, select the correct language before starting the call. The `language_detection` system tool and our Custom LLM's language heuristics work correctly — but the widget's STT transcribes in the pre-selected language, so spoken English gets transcribed as Turkish if "Turkish" is selected.
+
+**Impact on production:** No impact. Telephony calls use audio-based language detection. The single-agent + language-presets architecture works as designed.
+
 ## Multi-Intent Handling
 
 Citizens may have multiple needs in one call. Strategy:

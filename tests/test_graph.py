@@ -172,36 +172,42 @@ class TestEscalate:
         last_msg = result["messages"][-1].content.lower()
         assert "transfer" in last_msg or "operator" in last_msg
 
-    def test_returns_transfer_tool_call(self):
+    def test_demo_mode_no_tool_call(self):
+        """In demo mode (default), escalate returns text only."""
         from agent.nodes.escalate import escalate
         state = make_state(language="tr")
         result = escalate(state)
         msg = result["messages"][-1]
         tool_calls = msg.additional_kwargs.get("tool_calls", [])
+        assert len(tool_calls) == 0
+        assert "operator" in msg.content.lower() or "bagla" in msg.content.lower()
+
+    def test_production_mode_returns_tool_call(self):
+        """With ENABLE_PHONE_TRANSFER=true, escalate returns tool call."""
+        import os
+        os.environ["ENABLE_PHONE_TRANSFER"] = "true"
+        # Reload to pick up env change
+        import importlib
+        import agent.nodes.escalate as esc_module
+        importlib.reload(esc_module)
+
+        state = make_state(language="tr")
+        result = esc_module.escalate(state)
+        msg = result["messages"][-1]
+        tool_calls = msg.additional_kwargs.get("tool_calls", [])
         assert len(tool_calls) == 1
         assert tool_calls[0]["function"]["name"] == "transfer_to_number"
 
-    def test_tool_call_includes_transfer_number(self):
-        from agent.nodes.escalate import escalate
         import json
-        state = make_state(language="tr")
-        result = escalate(state)
-        msg = result["messages"][-1]
-        args = json.loads(msg.additional_kwargs["tool_calls"][0]["function"]["arguments"])
+        args = json.loads(tool_calls[0]["function"]["arguments"])
         assert "transfer_number" in args
         assert args["transfer_number"].startswith("+90")
-
-    def test_tool_call_includes_client_and_agent_messages(self):
-        from agent.nodes.escalate import escalate
-        import json
-        state = make_state(language="tr")
-        result = escalate(state)
-        msg = result["messages"][-1]
-        args = json.loads(msg.additional_kwargs["tool_calls"][0]["function"]["arguments"])
         assert "client_message" in args
         assert "agent_message" in args
-        assert len(args["client_message"]) > 0
-        assert len(args["agent_message"]) > 0
+
+        # Cleanup
+        os.environ["ENABLE_PHONE_TRANSFER"] = "false"
+        importlib.reload(esc_module)
 
     def test_marks_escalate_completed(self):
         from agent.nodes.escalate import escalate

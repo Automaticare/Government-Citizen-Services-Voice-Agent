@@ -1,15 +1,17 @@
 """
 Escalation node.
 
-Returns an AIMessage with a transfer_to_number system tool call in
-OpenAI function call format. ElevenLabs Custom LLM proxy forwards this
-to ElevenLabs, which executes the transfer as a platform-native system tool.
+Returns an AIMessage with transfer confirmation. In production with
+Twilio/SIP, this would include a transfer_to_number system tool call.
+In demo mode, returns text-only to avoid ElevenLabs retry loops
+(platform retries when transfer can't execute without real phone line).
 
-The message content is also set so TTS speaks a verbal confirmation
-before the transfer triggers.
+To enable real transfer, set ENABLE_PHONE_TRANSFER=true in .env and
+configure a real operator number.
 """
 
 import json
+import os
 import uuid
 
 from langchain_core.messages import AIMessage
@@ -21,14 +23,15 @@ logger = get_logger(__name__)
 
 # Demo transfer number — replace with real operator line in production
 _TRANSFER_NUMBER = "+905001234567"
+_ENABLE_TRANSFER = os.getenv("ENABLE_PHONE_TRANSFER", "false").lower() == "true"
 
 
 def escalate(state: AgentState) -> dict:
-    """Escalate to human operator via ElevenLabs transfer_to_number system tool.
+    """Escalate to human operator.
 
-    Returns an AIMessage with:
-    - content: verbal confirmation (spoken by TTS before transfer)
-    - additional_kwargs.tool_calls: OpenAI function call for transfer_to_number
+    In production (ENABLE_PHONE_TRANSFER=true): returns transfer_to_number
+    tool call for ElevenLabs to execute.
+    In demo: returns text-only confirmation (avoids retry loop).
     """
     language = state.get("language", "tr")
 
@@ -43,29 +46,38 @@ def escalate(state: AgentState) -> dict:
                           "Lutfen bir an bekleyin.")
         agent_message = "Vatandas sesli asistan uzerinden operator yardimi talep ediyor."
 
-    logger.info("Escalation triggered — returning transfer_to_number tool call")
+    if _ENABLE_TRANSFER:
+        logger.info("Escalation triggered — returning transfer_to_number tool call")
 
-    # OpenAI function call format — ElevenLabs executes this as a system tool
-    # All four parameters required by ElevenLabs: reason, transfer_number,
-    # client_message (read to caller while waiting), agent_message (briefing for operator)
-    tool_call = {
-        "id": f"call_{uuid.uuid4().hex[:12]}",
-        "type": "function",
-        "function": {
-            "name": "transfer_to_number",
-            "arguments": json.dumps({
-                "reason": reason,
-                "transfer_number": _TRANSFER_NUMBER,
-                "client_message": client_message,
-                "agent_message": agent_message,
-            }),
-        },
-    }
+        tool_call = {
+            "id": f"call_{uuid.uuid4().hex[:12]}",
+            "type": "function",
+            "function": {
+                "name": "transfer_to_number",
+                "arguments": json.dumps({
+                    "reason": reason,
+                    "transfer_number": _TRANSFER_NUMBER,
+                    "client_message": client_message,
+                    "agent_message": agent_message,
+                }),
+            },
+        }
 
-    msg = AIMessage(
-        content=client_message,
-        additional_kwargs={"tool_calls": [tool_call]},
-    )
+        msg = AIMessage(
+            content=client_message,
+            additional_kwargs={"tool_calls": [tool_call]},
+        )
+    else:
+        logger.info("Escalation triggered — demo mode (text-only, no phone transfer)")
+        if language == "en":
+            demo_msg = ("I would transfer you to a human operator now. "
+                        "In production, this triggers a phone transfer via Twilio/SIP. "
+                        "Is there anything else I can help you with?")
+        else:
+            demo_msg = ("Sizi bir operatore baglamam gerekiyor. "
+                        "Gercek ortamda bu noktada telefon transferi gerceklesir. "
+                        "Baska yardimci olabilecegim bir konu var mi?")
+        msg = AIMessage(content=demo_msg)
 
     return {
         "messages": [msg],
