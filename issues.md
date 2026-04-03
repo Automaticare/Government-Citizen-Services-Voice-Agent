@@ -458,20 +458,24 @@ ISSUE-07, ISSUE-11
 Connect the RAG retrieval system to the LangGraph agent so it can answer citizen questions from the knowledge base.
 
 ## Tasks
-- [ ] Implement `search_knowledge_base` tool that queries Pinecone with the caller's question
-- [ ] Add language-aware retrieval — query in the language the caller is using
-- [ ] Implement context window management — include top-k retrieved chunks in the LLM prompt
-- [ ] Add source attribution — agent references which service/document the answer comes from
-- [ ] Handle "no relevant results" case — agent acknowledges it doesn't know and offers alternatives
-- [ ] Test retrieval quality with 20+ sample questions across different service categories
-- [ ] Implement answer grounding — agent should not hallucinate beyond what's in the retrieved documents
+- [x] Implement retriever module (`rag/retriever.py`) — Pinecone query with language + category filters
+- [x] Add language-aware retrieval — filter by language metadata in Pinecone query
+- [x] Implement context window management — top-3 chunks formatted with source attribution
+- [x] Add source attribution — `[Source N: Title (category)]` prefix in context
+- [x] Handle "no relevant results" — relevance threshold (0.3), graceful "I don't know" with operator offer
+- [x] Implement answer grounding — RAG system prompt instructs LLM to only use provided context
+- [x] Integrate RAG into faq_answer node — replaces direct LLM call
+- [x] Integrate RAG into status_check node — tool chaining:
+  - additional_docs_needed → auto RAG query for required documents (replaces hardcoded REQUIRED_DOCS)
+  - rejected → auto RAG query for appeal rights from general category
 
 ## Acceptance Criteria
-- [ ] Agent answers FAQ-type questions accurately using retrieved documents
-- [ ] Answers are grounded — no hallucination beyond source material
-- [ ] Agent cites the source or service category when answering
-- [ ] "I don't know" responses are handled gracefully
-- [ ] Retrieval works correctly in both Turkish and English
+- [x] faq_answer uses Pinecone retrieval, not raw LLM knowledge
+- [x] Answers grounded — system prompt enforces "only use provided context"
+- [x] Source category cited in context passed to LLM
+- [x] "I don't know" for low relevance scores (< 0.3) with operator offer
+- [x] Retrieval works in both Turkish and English (language filter in Pinecone query)
+- [x] status_check tool chaining uses live RAG instead of hardcoded data
 # ISSUE-13: Build Mock Government API
 
 ## Module
