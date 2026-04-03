@@ -1,35 +1,32 @@
 """
 Status check node.
 
-Queries the application status API and chains results:
-- If "additional_docs_needed" → auto describe required documents
-- If "rejected" + recent → offer appeal guidance
+Queries the application status and chains results deterministically:
+- If "additional_docs_needed" → RAG query for required documents (Pinecone)
+- If "rejected" → RAG query for appeal rights + guidance
 - Otherwise → return status directly
 
-This is LangGraph's core differentiator: deterministic tool chaining
-that ElevenLabs native tools can't guarantee.
+This is LangGraph's core differentiator: deterministic tool chaining.
+ElevenLabs native tools can't guarantee "status API returned X,
+therefore automatically query knowledge base for Y."
 """
 
-import httpx
 from langchain_core.messages import AIMessage
-from langchain_openai import ChatOpenAI
 
 from agent.state import AgentState
 from agent.logging_config import get_logger
 from agent.nodes.utils import mark_completed
+from rag.retriever import search, format_context
 
 logger = get_logger(__name__)
 
-API_BASE = "http://localhost:8001"
-_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
 
-# Required documents per service type (mock — will come from RAG in ISSUE-10)
-REQUIRED_DOCS = {
-    "passport": "nufus cuzdani fotokopisi, 2 adet vesikalik fotograf, eski pasaport",
-    "id_card": "nufus cuzdani fotokopisi, ikametgah belgesi, 1 adet vesikalik fotograf",
-    "residence": "kira kontrati veya tapu fotokopisi, nufus cuzdani fotokopisi",
-    "default": "nufus cuzdani fotokopisi, ikametgah belgesi, 2 adet vesikalik fotograf",
-}
+def _rag_lookup(query: str, language: str, category: str | None = None) -> str:
+    """Query RAG for supplementary information. Returns formatted context or empty string."""
+    results = search(query=query, language=language, category=category, top_k=2)
+    if results and results[0].score > 0.3:
+        return format_context(results)
+    return ""
 
 
 def status_check(state: AgentState) -> dict:
@@ -37,7 +34,6 @@ def status_check(state: AgentState) -> dict:
     profile = state.get("citizen_profile")
     language = state.get("language", "tr")
 
-    # If no profile (not authenticated), inform the user
     if not profile:
         msg = ("I need to verify your identity before checking your application status."
                if language == "en" else
@@ -54,31 +50,42 @@ def status_check(state: AgentState) -> dict:
     # --- Deterministic tool chaining based on status ---
 
     if status == "additional_docs_needed":
-        # Chain: status result → auto lookup required documents
-        docs = REQUIRED_DOCS.get("default")
-        logger.info(f"Tool chain: status=additional_docs_needed -> auto docs lookup")
+        # Chain: status → RAG query for required documents
+        rag_query = "required documents for application" if language == "en" else "basvuru icin gerekli belgeler"
+        docs_context = _rag_lookup(rag_query, language)
+        logger.info(f"Tool chain: status=additional_docs_needed -> RAG docs lookup (found={bool(docs_context)})")
 
         if language == "en":
-            msg = (f"{first_name}, your application {app_ref} requires additional documents. "
-                   f"Required documents: {docs}. "
-                   f"Please submit these at your nearest citizen services office.")
+            msg = f"{first_name}, your application {app_ref} requires additional documents."
+            if docs_context:
+                msg += f"\n\nBased on our records, you may need:\n{docs_context}"
+            msg += "\nPlease submit these at your nearest citizen services office."
         else:
-            msg = (f"{first_name}, {app_ref} numarali basvurunuz ek belge gerektiriyor. "
-                   f"Gerekli belgeler: {docs}. "
-                   f"Bu belgeleri en yakin vatandas hizmetleri ofisine teslim edebilirsiniz.")
+            msg = f"{first_name}, {app_ref} numarali basvurunuz ek belge gerektiriyor."
+            if docs_context:
+                msg += f"\n\nKayitlarimiza gore gerekli olabilecek belgeler:\n{docs_context}"
+            msg += "\nBu belgeleri en yakin vatandas hizmetleri ofisine teslim edebilirsiniz."
 
     elif status == "rejected":
-        # Chain: status result → check appeal eligibility
-        logger.info(f"Tool chain: status=rejected -> appeal guidance")
+        # Chain: status → RAG query for appeal rights
+        rag_query = "appeal rights rejected application" if language == "en" else "itiraz hakki reddedilen basvuru"
+        appeal_context = _rag_lookup(rag_query, language, category="general")
+        logger.info(f"Tool chain: status=rejected -> RAG appeal lookup (found={bool(appeal_context)})")
 
         if language == "en":
-            msg = (f"{first_name}, your application {app_ref} has been rejected. "
-                   f"You may file an appeal within 30 days of the rejection date. "
-                   f"For legal guidance, we recommend consulting a lawyer.")
+            msg = f"{first_name}, your application {app_ref} has been rejected."
+            if appeal_context:
+                msg += f"\n\nAppeal information:\n{appeal_context}"
+            else:
+                msg += ("\nYou may file an appeal within 30 days of the rejection date. "
+                        "For legal guidance, we recommend consulting a lawyer.")
         else:
-            msg = (f"{first_name}, {app_ref} numarali basvurunuz reddedilmistir. "
-                   f"Red tarihinden itibaren 30 gun icinde itiraz basvurusu yapabilirsiniz. "
-                   f"Hukuki danismanlik icin bir avukata basvurmanizi oneririz.")
+            msg = f"{first_name}, {app_ref} numarali basvurunuz reddedilmistir."
+            if appeal_context:
+                msg += f"\n\nItiraz bilgileri:\n{appeal_context}"
+            else:
+                msg += ("\nRed tarihinden itibaren 30 gun icinde itiraz basvurusu yapabilirsiniz. "
+                        "Hukuki danismanlik icin bir avukata basvurmanizi oneririz.")
 
     elif status == "approved":
         if language == "en":
@@ -108,5 +115,3 @@ def status_check(state: AgentState) -> dict:
         "messages": [AIMessage(content=msg)],
         "completed_intents": mark_completed(state, "status_check"),
     }
-
-
