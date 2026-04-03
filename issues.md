@@ -393,23 +393,22 @@ None (can start in parallel)
 Prepare the knowledge base documents that the RAG pipeline will use to answer citizen questions about government services.
 
 ## Tasks
-- [ ] Create/collect sample government service documents (30+ documents):
-  - Frequently asked questions about common services (passport, driver's license, tax, social security)
-  - Service eligibility requirements
-  - Required documents lists
-  - Office hours and locations
-  - Fee schedules
-  - Application procedures step-by-step
-- [ ] Write documents in both Turkish and English
-- [ ] Structure documents with clear metadata: service_type, language, last_updated, category
-- [ ] Store raw documents in `/data/knowledge_base/` directory
-- [ ] Create a document manifest (JSON) listing all documents with metadata
+- [x] Create 40 government service documents across 5 categories:
+  - Passport (gerekli belgeler, ücretler, başvuru süreci, SSS)
+  - Civil Registry / Nüfus (doğum belgesi, ikametgah, evlilik)
+  - Driver's License / Ehliyet (yeni, yenileme, kayıp)
+  - Appointments / Randevu (nasıl alınır, iptal, ofis bilgileri, çalışma saatleri)
+  - General / Genel (şikayet, itiraz, KVKK, iletişim)
+- [x] Write documents in both Turkish and English (20 TR + 20 EN = 40 total)
+- [x] Structure documents with metadata: category, language, doc_type, title
+- [x] Store in `/data/knowledge_base/{category}/{language}/` directory structure
+- [x] Create manifest.json listing all 40 documents with metadata
 
 ## Acceptance Criteria
-- [ ] Minimum 30 documents covering at least 5 government service categories
-- [ ] Each document exists in Turkish and English
-- [ ] Metadata is complete and consistent
-- [ ] Documents are realistic and detailed enough to support multi-turn conversations
+- [x] 40 documents covering 5 government service categories (exceeds 30 minimum)
+- [x] Each document exists in Turkish and English
+- [x] Metadata complete in manifest.json (id, path, category, language, doc_type, title)
+- [x] Documents are detailed — fees, step-by-step procedures, FAQs with realistic content
 
 ---
 
