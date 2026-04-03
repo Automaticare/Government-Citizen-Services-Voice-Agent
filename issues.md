@@ -427,19 +427,19 @@ ISSUE-10
 Build the embedding pipeline that processes knowledge base documents and loads them into Pinecone for semantic search.
 
 ## Tasks
-- [ ] Implement document chunking strategy — split documents into retrievable chunks with overlap
-- [ ] Select embedding model (OpenAI text-embedding-3-small or similar)
-- [ ] Build embedding pipeline script: read documents → chunk → embed → upsert to Pinecone
-- [ ] Configure Pinecone index with appropriate dimensions and metadata filtering
-- [ ] Implement metadata filters — filter by language, service_type, category
-- [ ] Build re-indexing script for when documents are updated
-- [ ] Write validation script — query known questions and verify correct documents are retrieved
+- [x] Implement document chunking strategy — header-based splitting (##) with size overlap (800 chars, 100 overlap)
+- [x] Select embedding model: OpenAI text-embedding-3-small (1536 dimensions, multilingual)
+- [x] Build embedding pipeline: `python -m rag.embed` — chunk → embed → upsert to Pinecone
+- [x] Configure Pinecone serverless index (AWS us-east-1, cosine metric, 1536 dims)
+- [x] Implement metadata filters — language, category, doc_type stored per chunk
+- [x] Build re-indexing: `python -m rag.embed --reset` deletes and recreates index
+- [x] Build validation: `python -m rag.embed --validate-only` — 5 test queries (TR + EN)
 
 ## Acceptance Criteria
-- [ ] All knowledge base documents are chunked, embedded, and stored in Pinecone
-- [ ] Semantic search returns relevant results for test queries in both languages
-- [ ] Metadata filtering works correctly (e.g., only Turkish docs for Turkish queries)
-- [ ] Re-indexing script can update the index without duplicating documents
+- [x] 253 chunks from 40 documents embedded and stored in Pinecone
+- [x] 5/5 validation queries return correct category (passport, drivers_license, appointments, general)
+- [x] Metadata filtering works — language filter tested in validation queries
+- [x] Re-indexing via --reset flag recreates index without duplicates
 
 ---
 
