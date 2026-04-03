@@ -20,10 +20,11 @@ class AgentConfig:
     api_key: str = field(default_factory=lambda: os.getenv("ELEVENLABS_API_KEY", ""))
     agent_id: str = field(default_factory=lambda: os.getenv("ELEVENLABS_AGENT_ID", ""))
 
-    # OpenAI (for LangGraph agent / embeddings)
+    # OpenAI — used by LangGraph nodes via langchain_openai (reads OPENAI_API_KEY from env directly)
+    # Kept here for centralized config validation in future
     openai_api_key: str = field(default_factory=lambda: os.getenv("OPENAI_API_KEY", ""))
 
-    # Pinecone (for RAG)
+    # Pinecone — used by RAG pipeline (ISSUE-10)
     pinecone_api_key: str = field(default_factory=lambda: os.getenv("PINECONE_API_KEY", ""))
     pinecone_index_name: str = field(
         default_factory=lambda: os.getenv("PINECONE_INDEX_NAME", "gov-citizen-services")

@@ -48,15 +48,18 @@ def route_by_intent(state: AgentState) -> str:
 
 
 def check_pending_intents(state: AgentState) -> Literal["intent_classify", "__end__"]:
-    """After a service node completes, check if there are more intents to handle."""
-    completed = set(state.get("completed_intents", []))
-    current = state.get("current_intent")
+    """After a service node completes, check if there are more intents to handle.
 
-    # If current intent was just completed and there might be more,
-    # route back to intent_classify. The LLM will check conversation
-    # context for any remaining requests.
-    # For now, always end — multi-intent re-routing happens when
-    # the LLM detects another intent in the next turn.
+    Multi-intent routing: if the user mentioned multiple needs in one message
+    (e.g., "check status AND book appointment"), the LLM may have classified
+    only the first. After completing a service, we re-route to intent_classify
+    so the LLM can detect remaining intents from conversation context.
+
+    Currently returns __end__ — the next user turn triggers a fresh
+    intent classification via ElevenLabs' next request. True single-turn
+    multi-intent (without user confirmation) requires conversation history
+    analysis, planned for ISSUE-16 (Conversation Context Management).
+    """
     return "__end__"
 
 

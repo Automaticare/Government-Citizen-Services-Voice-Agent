@@ -1,0 +1,362 @@
+[
+  {
+    "id": "appointments_en_cancel_change",
+    "path": "appointments/en/cancel_change.md",
+    "category": "appointments",
+    "category_label": "Randevu Sistemi",
+    "language": "en",
+    "doc_type": "cancel_change",
+    "title": "Cancelling or Changing an Appointment"
+  },
+  {
+    "id": "appointments_en_how_to_book",
+    "path": "appointments/en/how_to_book.md",
+    "category": "appointments",
+    "category_label": "Randevu Sistemi",
+    "language": "en",
+    "doc_type": "how_to_book",
+    "title": "How to Book an Appointment"
+  },
+  {
+    "id": "appointments_en_office_info",
+    "path": "appointments/en/office_info.md",
+    "category": "appointments",
+    "category_label": "Randevu Sistemi",
+    "language": "en",
+    "doc_type": "office_info",
+    "title": "Office Locations and Information - Istanbul"
+  },
+  {
+    "id": "appointments_en_working_hours",
+    "path": "appointments/en/working_hours.md",
+    "category": "appointments",
+    "category_label": "Randevu Sistemi",
+    "language": "en",
+    "doc_type": "working_hours",
+    "title": "Working Hours, Public Holidays, and Peak Times"
+  },
+  {
+    "id": "appointments_tr_calisma_saatleri",
+    "path": "appointments/tr/calisma_saatleri.md",
+    "category": "appointments",
+    "category_label": "Randevu Sistemi",
+    "language": "tr",
+    "doc_type": "working_hours",
+    "title": "Calisma Saatleri, Tatiller ve Yogun Donemler"
+  },
+  {
+    "id": "appointments_tr_iptal_degisiklik",
+    "path": "appointments/tr/iptal_degisiklik.md",
+    "category": "appointments",
+    "category_label": "Randevu Sistemi",
+    "language": "tr",
+    "doc_type": "cancel_change",
+    "title": "Randevu Iptali ve Degisikligi"
+  },
+  {
+    "id": "appointments_tr_nasil_alinir",
+    "path": "appointments/tr/nasil_alinir.md",
+    "category": "appointments",
+    "category_label": "Randevu Sistemi",
+    "language": "tr",
+    "doc_type": "how_to_book",
+    "title": "Randevu Nasil Alinir"
+  },
+  {
+    "id": "appointments_tr_ofis_bilgileri",
+    "path": "appointments/tr/ofis_bilgileri.md",
+    "category": "appointments",
+    "category_label": "Randevu Sistemi",
+    "language": "tr",
+    "doc_type": "office_info",
+    "title": "Ofis Konumlari ve Bilgileri - Istanbul"
+  },
+  {
+    "id": "civil_registry_en_application_process",
+    "path": "civil_registry/en/application_process.md",
+    "category": "civil_registry",
+    "category_label": "Nufus Hizmetleri",
+    "language": "en",
+    "doc_type": "application_process",
+    "title": "Application Process — Civil Registry Services"
+  },
+  {
+    "id": "civil_registry_en_faq",
+    "path": "civil_registry/en/faq.md",
+    "category": "civil_registry",
+    "category_label": "Nufus Hizmetleri",
+    "language": "en",
+    "doc_type": "faq",
+    "title": "Frequently Asked Questions (FAQ) — Civil Registry Services"
+  },
+  {
+    "id": "civil_registry_en_fees",
+    "path": "civil_registry/en/fees.md",
+    "category": "civil_registry",
+    "category_label": "Nufus Hizmetleri",
+    "language": "en",
+    "doc_type": "fees",
+    "title": "Fees — Civil Registry Services (2026)"
+  },
+  {
+    "id": "civil_registry_en_required_documents",
+    "path": "civil_registry/en/required_documents.md",
+    "category": "civil_registry",
+    "category_label": "Nufus Hizmetleri",
+    "language": "en",
+    "doc_type": "required_documents",
+    "title": "Required Documents — Civil Registry Services"
+  },
+  {
+    "id": "civil_registry_tr_basvuru_sureci",
+    "path": "civil_registry/tr/basvuru_sureci.md",
+    "category": "civil_registry",
+    "category_label": "Nufus Hizmetleri",
+    "language": "tr",
+    "doc_type": "application_process",
+    "title": "Başvuru Süreci — Nüfus Hizmetleri"
+  },
+  {
+    "id": "civil_registry_tr_gerekli_belgeler",
+    "path": "civil_registry/tr/gerekli_belgeler.md",
+    "category": "civil_registry",
+    "category_label": "Nufus Hizmetleri",
+    "language": "tr",
+    "doc_type": "required_documents",
+    "title": "Gerekli Belgeler — Nüfus Hizmetleri"
+  },
+  {
+    "id": "civil_registry_tr_sss",
+    "path": "civil_registry/tr/sss.md",
+    "category": "civil_registry",
+    "category_label": "Nufus Hizmetleri",
+    "language": "tr",
+    "doc_type": "faq",
+    "title": "Sıkça Sorulan Sorular (SSS) — Nüfus Hizmetleri"
+  },
+  {
+    "id": "civil_registry_tr_ucretler",
+    "path": "civil_registry/tr/ucretler.md",
+    "category": "civil_registry",
+    "category_label": "Nufus Hizmetleri",
+    "language": "tr",
+    "doc_type": "fees",
+    "title": "Ücretler — Nüfus Hizmetleri (2026)"
+  },
+  {
+    "id": "drivers_license_en_application_process",
+    "path": "drivers_license/en/application_process.md",
+    "category": "drivers_license",
+    "category_label": "Ehliyet Islemleri",
+    "language": "en",
+    "doc_type": "application_process",
+    "title": "Driver's License Transactions - Application Process"
+  },
+  {
+    "id": "drivers_license_en_faq",
+    "path": "drivers_license/en/faq.md",
+    "category": "drivers_license",
+    "category_label": "Ehliyet Islemleri",
+    "language": "en",
+    "doc_type": "faq",
+    "title": "Driver's License Transactions - Frequently Asked Questions (FAQ)"
+  },
+  {
+    "id": "drivers_license_en_fees",
+    "path": "drivers_license/en/fees.md",
+    "category": "drivers_license",
+    "category_label": "Ehliyet Islemleri",
+    "language": "en",
+    "doc_type": "fees",
+    "title": "Driver's License Transactions - Fee Schedule (2026)"
+  },
+  {
+    "id": "drivers_license_en_required_documents",
+    "path": "drivers_license/en/required_documents.md",
+    "category": "drivers_license",
+    "category_label": "Ehliyet Islemleri",
+    "language": "en",
+    "doc_type": "required_documents",
+    "title": "Driver's License Transactions - Required Documents"
+  },
+  {
+    "id": "drivers_license_tr_basvuru_sureci",
+    "path": "drivers_license/tr/basvuru_sureci.md",
+    "category": "drivers_license",
+    "category_label": "Ehliyet Islemleri",
+    "language": "tr",
+    "doc_type": "application_process",
+    "title": "Ehliyet İşlemleri - Başvuru Süreci"
+  },
+  {
+    "id": "drivers_license_tr_gerekli_belgeler",
+    "path": "drivers_license/tr/gerekli_belgeler.md",
+    "category": "drivers_license",
+    "category_label": "Ehliyet Islemleri",
+    "language": "tr",
+    "doc_type": "required_documents",
+    "title": "Ehliyet İşlemleri - Gerekli Belgeler"
+  },
+  {
+    "id": "drivers_license_tr_sss",
+    "path": "drivers_license/tr/sss.md",
+    "category": "drivers_license",
+    "category_label": "Ehliyet Islemleri",
+    "language": "tr",
+    "doc_type": "faq",
+    "title": "Ehliyet İşlemleri - Sıkça Sorulan Sorular (SSS)"
+  },
+  {
+    "id": "drivers_license_tr_ucretler",
+    "path": "drivers_license/tr/ucretler.md",
+    "category": "drivers_license",
+    "category_label": "Ehliyet Islemleri",
+    "language": "tr",
+    "doc_type": "fees",
+    "title": "Ehliyet İşlemleri - Ücret Tarifeleri (2026)"
+  },
+  {
+    "id": "general_en_appeal_rights",
+    "path": "general/en/appeal_rights.md",
+    "category": "general",
+    "category_label": "Genel Bilgi",
+    "language": "en",
+    "doc_type": "appeal_rights",
+    "title": "Appeal Rights"
+  },
+  {
+    "id": "general_en_complaint_process",
+    "path": "general/en/complaint_process.md",
+    "category": "general",
+    "category_label": "Genel Bilgi",
+    "language": "en",
+    "doc_type": "complaint_process",
+    "title": "Complaint Process"
+  },
+  {
+    "id": "general_en_contact",
+    "path": "general/en/contact.md",
+    "category": "general",
+    "category_label": "Genel Bilgi",
+    "language": "en",
+    "doc_type": "contact",
+    "title": "Contact Information"
+  },
+  {
+    "id": "general_en_data_protection",
+    "path": "general/en/data_protection.md",
+    "category": "general",
+    "category_label": "Genel Bilgi",
+    "language": "en",
+    "doc_type": "data_protection",
+    "title": "Data Protection Rights (KVKK)"
+  },
+  {
+    "id": "general_tr_iletisim",
+    "path": "general/tr/iletisim.md",
+    "category": "general",
+    "category_label": "Genel Bilgi",
+    "language": "tr",
+    "doc_type": "contact",
+    "title": "İletişim Bilgileri"
+  },
+  {
+    "id": "general_tr_itiraz_hakki",
+    "path": "general/tr/itiraz_hakki.md",
+    "category": "general",
+    "category_label": "Genel Bilgi",
+    "language": "tr",
+    "doc_type": "appeal_rights",
+    "title": "İtiraz Hakkı"
+  },
+  {
+    "id": "general_tr_kvkk_haklari",
+    "path": "general/tr/kvkk_haklari.md",
+    "category": "general",
+    "category_label": "Genel Bilgi",
+    "language": "tr",
+    "doc_type": "data_protection",
+    "title": "KVKK Kapsamında Vatandaş Hakları"
+  },
+  {
+    "id": "general_tr_sikayet_sureci",
+    "path": "general/tr/sikayet_sureci.md",
+    "category": "general",
+    "category_label": "Genel Bilgi",
+    "language": "tr",
+    "doc_type": "complaint_process",
+    "title": "Şikayet Süreci"
+  },
+  {
+    "id": "passport_en_application_process",
+    "path": "passport/en/application_process.md",
+    "category": "passport",
+    "category_label": "Pasaport Islemleri",
+    "language": "en",
+    "doc_type": "application_process",
+    "title": "Passport Application Process"
+  },
+  {
+    "id": "passport_en_faq",
+    "path": "passport/en/faq.md",
+    "category": "passport",
+    "category_label": "Pasaport Islemleri",
+    "language": "en",
+    "doc_type": "faq",
+    "title": "Passport Frequently Asked Questions"
+  },
+  {
+    "id": "passport_en_fees",
+    "path": "passport/en/fees.md",
+    "category": "passport",
+    "category_label": "Pasaport Islemleri",
+    "language": "en",
+    "doc_type": "fees",
+    "title": "Passport Fees and Charges"
+  },
+  {
+    "id": "passport_en_required_documents",
+    "path": "passport/en/required_documents.md",
+    "category": "passport",
+    "category_label": "Pasaport Islemleri",
+    "language": "en",
+    "doc_type": "required_documents",
+    "title": "Required Documents for Passport Application"
+  },
+  {
+    "id": "passport_tr_basvuru_sureci",
+    "path": "passport/tr/basvuru_sureci.md",
+    "category": "passport",
+    "category_label": "Pasaport Islemleri",
+    "language": "tr",
+    "doc_type": "application_process",
+    "title": "Pasaport Başvuru Süreci"
+  },
+  {
+    "id": "passport_tr_gerekli_belgeler",
+    "path": "passport/tr/gerekli_belgeler.md",
+    "category": "passport",
+    "category_label": "Pasaport Islemleri",
+    "language": "tr",
+    "doc_type": "required_documents",
+    "title": "Pasaport Başvurusu İçin Gerekli Belgeler"
+  },
+  {
+    "id": "passport_tr_sss",
+    "path": "passport/tr/sss.md",
+    "category": "passport",
+    "category_label": "Pasaport Islemleri",
+    "language": "tr",
+    "doc_type": "faq",
+    "title": "Pasaport Sık Sorulan Sorular"
+  },
+  {
+    "id": "passport_tr_ucretler",
+    "path": "passport/tr/ucretler.md",
+    "category": "passport",
+    "category_label": "Pasaport Islemleri",
+    "language": "tr",
+    "doc_type": "fees",
+    "title": "Pasaport Ücretleri ve Harçları"
+  }
+]

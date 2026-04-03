@@ -128,7 +128,9 @@ make test-live         # Live API + simulation tests
 - **ISSUE-08:** Connect LangGraph to ElevenLabs Voice — transfer_to_number system tool call, buffer words, circuit breaker (Level 0/1/2 degradation), Custom LLM deploy config, backup_llm_config, conversation.py removed
 - **ISSUE-09:** Tool Schemas — 5 business tools (Pydantic validation + OpenAI format registry), 3 system tools (language_detection + end_call deployed, transfer_to_number deferred to Twilio), 22 tests
 
-### Next: ISSUE-10 — Knowledge Base Preparation
+- **ISSUE-10:** Knowledge Base — 40 documents (5 categories × 4 doc types × 2 languages), manifest.json
+
+### Next: ISSUE-11 — Embedding Pipeline & Vector Store Setup
 
 ### Next: ISSUE-08 — Remaining Manual Tasks
 - [ ] Set up public URL (ngrok http 8000) for ElevenLabs to reach our server
