@@ -23,6 +23,7 @@ MANIFEST_PATH = KB_DIR / "manifest.json"
 # Chunking parameters
 MAX_CHUNK_SIZE = 800   # characters — fits ~200 tokens, good for embedding
 CHUNK_OVERLAP = 100    # characters overlap between chunks
+MIN_CHUNK_SIZE = 50    # skip chunks shorter than this (header-only fragments)
 
 
 @dataclass
@@ -102,10 +103,16 @@ def chunk_document(doc_meta: dict) -> list[Chunk]:
 
     chunks = []
     for i, section in enumerate(sections):
+        # Skip fragments too short to be useful (header-only lines)
+        if len(section) < MIN_CHUNK_SIZE:
+            continue
+
         # Split large sections by size
         sub_chunks = _split_by_size(section)
 
         for j, chunk_text in enumerate(sub_chunks):
+            if len(chunk_text) < MIN_CHUNK_SIZE:
+                continue
             chunk_id = f"{doc_meta['id']}_chunk_{i}_{j}"
             chunks.append(Chunk(
                 id=chunk_id,
