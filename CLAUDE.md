@@ -132,7 +132,8 @@ make test-live         # Live API + simulation tests
 
 - **ISSUE-11:** Embedding Pipeline — chunker (253 chunks from 40 docs), OpenAI text-embedding-3-small, Pinecone serverless index, 5/5 validation queries passing
 
-### Next: ISSUE-12 — Integrate RAG into LangGraph Agent
+- **ISSUE-12:** RAG Integration — IN PROGRESS
+  - [x] Retriever module (rag/retriever.py) — Pinecone query + language filter + context formatting
 
 ### Next: ISSUE-08 — Remaining Manual Tasks
 - [ ] Set up public URL (ngrok http 8000) for ElevenLabs to reach our server
