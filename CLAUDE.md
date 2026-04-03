@@ -130,7 +130,9 @@ make test-live         # Live API + simulation tests
 
 - **ISSUE-10:** Knowledge Base — 40 documents (5 categories × 4 doc types × 2 languages), manifest.json
 
-### Next: ISSUE-11 — Embedding Pipeline & Vector Store Setup
+- **ISSUE-11:** Embedding Pipeline — chunker (253 chunks from 40 docs), OpenAI text-embedding-3-small, Pinecone serverless index, 5/5 validation queries passing
+
+### Next: ISSUE-12 — Integrate RAG into LangGraph Agent
 
 ### Next: ISSUE-08 — Remaining Manual Tasks
 - [ ] Set up public URL (ngrok http 8000) for ElevenLabs to reach our server
