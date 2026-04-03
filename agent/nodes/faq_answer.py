@@ -59,8 +59,8 @@ def faq_answer(state: AgentState) -> dict:
     if not user_query:
         user_query = "general information"
 
-    # Step 1: Retrieve from Pinecone
-    results = search(query=user_query, language=language, top_k=3)
+    # Step 1: Retrieve from Pinecone (top_k=5 for better coverage across doc types)
+    results = search(query=user_query, language=language, top_k=5)
 
     # Step 2: Check relevance
     if not results or results[0].score < RELEVANCE_THRESHOLD:

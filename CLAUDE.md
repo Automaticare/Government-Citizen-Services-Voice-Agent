@@ -133,6 +133,8 @@ make test-live         # Live API + simulation tests
 - **ISSUE-11:** Embedding Pipeline — chunker (253 chunks from 40 docs), OpenAI text-embedding-3-small, Pinecone serverless index, 5/5 validation queries passing
 
 - **ISSUE-12:** RAG Integration — faq_answer grounded in Pinecone (no hallucination), status_check chains to RAG for required docs + appeal rights
+- **ISSUE-13:** Mock Government API — IN PROGRESS
+  - [x] Appointment and DocumentRequest DB models + seed data (5 appointments, 3 doc requests)
 
 ### Next: ISSUE-08 — Remaining Manual Tasks
 - [ ] Set up public URL (ngrok http 8000) for ElevenLabs to reach our server

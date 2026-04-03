@@ -11,7 +11,7 @@ TC Kimlik numbers use valid checksums. All PII is fictional.
 import argparse
 import hashlib
 
-from api.models import Base, Citizen, SessionLocal, engine, init_db
+from api.models import Base, Citizen, Appointment, DocumentRequest, SessionLocal, engine, init_db
 
 
 def hash_tc(tc_kimlik: str) -> str:
@@ -92,6 +92,35 @@ def seed(reset: bool = False):
 
         db.commit()
         print(f"Seeded {len(SEED_CITIZENS)} citizen records.")
+
+        # Seed sample appointments
+        appointments = [
+            Appointment(citizen_id=1, service_type="passport", appointment_date="2026-04-07",
+                       appointment_time="10:00", office="Kadikoy Nufus Mudurlugu"),
+            Appointment(citizen_id=2, service_type="id_card", appointment_date="2026-04-08",
+                       appointment_time="14:00", office="Uskudar Nufus Mudurlugu"),
+            Appointment(citizen_id=3, service_type="driver_license", appointment_date="2026-04-09",
+                       appointment_time="09:00", office="Besiktas Nufus Mudurlugu"),
+            Appointment(citizen_id=1, service_type="id_card", appointment_date="2026-03-15",
+                       appointment_time="11:00", office="Kadikoy Nufus Mudurlugu", status="completed"),
+            Appointment(citizen_id=5, service_type="passport", appointment_date="2026-04-10",
+                       appointment_time="15:00", office="Bakirkoy Nufus Mudurlugu"),
+        ]
+        db.add_all(appointments)
+
+        # Seed sample document requests
+        doc_requests = [
+            DocumentRequest(citizen_id=1, document_type="birth_certificate",
+                          request_ref="DOC-2026-0001", status="ready", estimated_days=3),
+            DocumentRequest(citizen_id=2, document_type="residence_cert",
+                          request_ref="DOC-2026-0002", status="processing", estimated_days=5),
+            DocumentRequest(citizen_id=6, document_type="marriage_cert",
+                          request_ref="DOC-2026-0003", status="delivered", estimated_days=3),
+        ]
+        db.add_all(doc_requests)
+
+        db.commit()
+        print(f"Seeded {len(appointments)} appointments, {len(doc_requests)} document requests.")
 
         # Print sample for verification (no raw TC Kimlik)
         print("\nSample records:")

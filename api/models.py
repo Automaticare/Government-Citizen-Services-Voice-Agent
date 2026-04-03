@@ -15,6 +15,8 @@ from dotenv import load_dotenv
 from sqlalchemy import (
     Column,
     DateTime,
+    Float,
+    ForeignKey,
     Integer,
     String,
     create_engine,
@@ -59,6 +61,35 @@ class AuthAuditLog(Base):
     result = Column(String, nullable=False)  # "success" or "failure"
     citizen_id_hash = Column(String, nullable=True)  # SHA-256 hash, null on failure
     failure_reason = Column(String, nullable=True)
+
+
+class Appointment(Base):
+    """Booked appointments for citizens."""
+
+    __tablename__ = "appointments"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    citizen_id = Column(Integer, ForeignKey("citizens.id"), nullable=False, index=True)
+    service_type = Column(String, nullable=False)  # passport, id_card, driver_license, etc.
+    appointment_date = Column(String, nullable=False)  # YYYY-MM-DD
+    appointment_time = Column(String, nullable=False)  # HH:MM
+    office = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="confirmed")  # confirmed, cancelled, completed
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class DocumentRequest(Base):
+    """Document preparation requests from citizens."""
+
+    __tablename__ = "document_requests"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    citizen_id = Column(Integer, ForeignKey("citizens.id"), nullable=False, index=True)
+    document_type = Column(String, nullable=False)  # birth_certificate, residence_cert, etc.
+    request_ref = Column(String, unique=True, nullable=False)  # DOC-YYYY-NNNN
+    status = Column(String, nullable=False, default="processing")  # processing, ready, delivered
+    estimated_days = Column(Integer, nullable=False, default=5)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 def init_db():
