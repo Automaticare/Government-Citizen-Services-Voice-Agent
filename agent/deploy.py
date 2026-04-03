@@ -52,13 +52,9 @@ def build_agent_config(version: str, custom_llm_url: str | None = None) -> dict:
     """
     system_prompt_tr = load_system_prompt(language="tr", version=version)
 
-    # Language detection system tool — auto-switches based on caller's language
-    language_detection_tool = {
-        "type": "system",
-        "name": "language_detection",
-        "description": "Detect the caller's language and switch to it. Trigger when the user speaks a different language than the current conversation language.",
-        "params": {"system_tool_type": "language_detection"},
-    }
+    # System tools — platform-native, executed by ElevenLabs (not LangGraph)
+    from agent.tools.schemas import get_system_tool_configs
+    system_tools = get_system_tool_configs()
 
     # Prompt config — common fields
     prompt_config = {
@@ -66,7 +62,7 @@ def build_agent_config(version: str, custom_llm_url: str | None = None) -> dict:
         "llm": "gpt-4o",
         "temperature": 0.7,
         "max_tokens": 1024,
-        "tools": [language_detection_tool],
+        "tools": system_tools,
     }
 
     # Custom LLM: route all LLM calls to our LangGraph proxy
