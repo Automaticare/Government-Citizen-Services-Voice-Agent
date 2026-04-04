@@ -123,12 +123,29 @@ class ChatCompletionRequest(BaseModel):
 
 def sse_chunk(response_id: str, delta: dict, finish_reason: str | None = None) -> str:
     """Format a single SSE chunk in OpenAI chat completion format."""
+    import time
     payload = {
         "id": response_id,
         "object": "chat.completion.chunk",
+        "created": int(time.time()),
+        "model": "langgraph-citizen-agent",
         "choices": [{"index": 0, "delta": delta, "finish_reason": finish_reason}],
     }
     return f"data: {json.dumps(payload)}\n\n"
+
+
+def _stream_text_as_chunks(response_id: str, text: str):
+    """Break text into word-level SSE chunks for natural TTS streaming.
+
+    ElevenLabs TTS works best with small, incremental chunks —
+    just like OpenAI streams token by token. Sending one giant
+    chunk causes TTS buffer issues and garbled speech.
+    """
+    words = text.split(" ")
+    for i, word in enumerate(words):
+        # Add space before word (except first)
+        content = f" {word}" if i > 0 else word
+        yield sse_chunk(response_id, {"content": content})
 
 
 # --- Request helpers ---
@@ -295,10 +312,11 @@ async def chat_completions(request: ChatCompletionRequest):
                         ]
                         yield sse_chunk(response_id, {"tool_calls": tool_calls_delta})
 
-                    # Deduplicate: skip if exact same content already sent
+                    # Stream content word-by-word for natural TTS
                     if content and content not in sent_content:
                         sent_content.add(content)
-                        yield sse_chunk(response_id, {"content": content})
+                        for chunk in _stream_text_as_chunks(response_id, content):
+                            yield chunk
 
                 _cb_record_success()
 
