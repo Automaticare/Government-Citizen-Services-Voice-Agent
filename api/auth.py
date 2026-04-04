@@ -41,6 +41,16 @@ class AuthRequestAppRef(BaseModel):
     attempt_number: int = 1
 
 
+class AuthWebhookRequest(BaseModel):
+    """Webhook-compatible auth request for ElevenLabs dispatch tool.
+
+    Parameters are extracted by LLM from conversation — no session_id
+    or attempt_number needed (ElevenLabs manages retries via workflow edges).
+    """
+    tc_kimlik: str
+    date_of_birth: str
+
+
 class AuthResponse(BaseModel):
     """Standardized auth response."""
     is_error: bool
@@ -153,6 +163,71 @@ def verify_tc_kimlik(
     _log_audit(db, request.session_id, "tc_kimlik_dob", request.attempt_number,
                "success", citizen_id_hash=tc_hash)
     logger.info(f"Auth success | session={request.session_id} | citizen_hash={tc_hash[:12]}...")
+
+    return AuthResponse(
+        is_error=False,
+        message=f"Hosgeldiniz, {citizen.first_name}.",
+        citizen_profile=_citizen_to_safe_profile(citizen),
+    )
+
+
+@router.post("/verify/webhook", response_model=AuthResponse)
+def verify_webhook(
+    request: AuthWebhookRequest,
+    db: Session = Depends(get_db),
+):
+    """Webhook-compatible auth for ElevenLabs Workflow dispatch tool.
+
+    Called by ElevenLabs as a webhook tool — LLM extracts tc_kimlik
+    and date_of_birth from conversation, ElevenLabs sends them here.
+
+    Response includes citizen_profile which ElevenLabs stores as
+    dynamic variables via tool assignment configuration.
+
+    Returns is_error=false on success (dispatch tool routes to
+    authenticated subagent), is_error=true on failure (routes to
+    retry or human transfer).
+    """
+    logger.info("Auth webhook attempt")
+
+    # Normalize date format — LLM may send various formats
+    from agent.tools.date_parser import normalize_date
+    normalized_dob, date_error = normalize_date(request.date_of_birth)
+
+    if date_error:
+        return AuthResponse(
+            is_error=True,
+            message=f"Dogum tarihi formati anlasilamadi: {request.date_of_birth}",
+            guidance="Lutfen gun/ay/yil olarak soyleyin (ornek: 15/03/1990)",
+        )
+
+    # Validate TC Kimlik
+    is_valid, error = validate_tc_kimlik(request.tc_kimlik)
+    if not is_valid:
+        return AuthResponse(
+            is_error=True,
+            message=error,
+        )
+
+    # DB lookup
+    tc_hash = _hash(request.tc_kimlik.replace(" ", "").replace("-", ""))
+    citizen = db.query(Citizen).filter(Citizen.tc_kimlik_hash == tc_hash).first()
+
+    if not citizen:
+        return AuthResponse(
+            is_error=True,
+            message="TC Kimlik numarasi sistemde bulunamadi.",
+        )
+
+    # Verify DOB
+    if normalized_dob != citizen.date_of_birth:
+        return AuthResponse(
+            is_error=True,
+            message="Dogum tarihi eslesmedi.",
+        )
+
+    # Success — citizen_profile returned for dynamic variable assignment
+    logger.info(f"Auth webhook success | citizen_id={citizen.id}")
 
     return AuthResponse(
         is_error=False,
