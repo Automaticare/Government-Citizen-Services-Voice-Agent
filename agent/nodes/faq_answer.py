@@ -17,7 +17,7 @@ from rag.retriever import search, format_context
 
 logger = get_logger(__name__)
 
-_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
+_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
 # Below this score, retrieval is considered irrelevant
 RELEVANCE_THRESHOLD = 0.3
@@ -37,6 +37,9 @@ Rules:
   - For fees: "On yillik pasaport ucreti bes bin yedi yuz elli lira" instead of tables.
   - Keep it concise — a phone caller doesn't want to hear a long list read out.
   - Summarize where possible, offer to provide more details if needed.
+- If the context documents do NOT contain the specific information the user is asking about, say "Bu konuda elimde kesin bir bilgi yok" — do NOT guess, infer, or add details not explicitly stated in the context.
+- Do NOT add specific numbers (minutes, amounts, dates) that are not in the context. If the context says "dilim" but not "15 dakika", do NOT say "15 dakikalık dilimler".
+- Do NOT suggest transferring to a human operator unless the user explicitly asks for it or the question is truly unanswerable.
 - Respond in {language_name}.
 
 Context documents:
