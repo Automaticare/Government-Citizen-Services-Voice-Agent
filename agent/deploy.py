@@ -88,16 +88,31 @@ def build_agent_config(version: str, custom_llm_url: str | None = None) -> dict:
             "preference": "default",
         }
 
+    # Timeout message when max duration is reached
+    MAX_DURATION_MSG_TR = ("Gorusme suresi doldu. Baska bir konuda yardima ihtiyaciniz olursa "
+                           "lutfen tekrar arayin. Iyi gunler dilerim.")
+
     # Primary config: Turkish
     conversation_config = ConversationalConfig(
         agent=ELAgentConfig(
             prompt=prompt_config,
             first_message=FIRST_MESSAGES["tr"],
             language="tr",
+            max_conversation_duration_message=MAX_DURATION_MSG_TR,
         ),
         tts=TtsConversationalConfigOutput(
             model_id="eleven_flash_v2_5",
         ),
+        # Turn and silence settings for natural phone conversation
+        turn={
+            "turn_timeout": 15.0,              # Wait 15s for user to speak before prompting
+            "silence_end_call_timeout": 30.0,   # End call after 30s silence
+            "turn_eagerness": "patient",        # Don't interrupt — government service, be patient
+        },
+        # Max conversation duration: 10 minutes (600s)
+        conversation={
+            "max_duration_seconds": 600,
+        },
         # English language preset — dict format to avoid Input/Output type mismatch
         language_presets={
             "en": {
