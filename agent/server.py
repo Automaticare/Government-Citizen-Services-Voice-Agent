@@ -155,51 +155,20 @@ def _extract_auth_state(request: ChatCompletionRequest) -> tuple[str, dict | Non
     return "unauthenticated", None
 
 
-def _detect_language(text: str) -> str:
-    """Detect language from message text using simple heuristics.
-
-    Checks for Turkish-specific characters and common words.
-    Returns 'tr' or 'en'.
-    """
-    turkish_chars = set("çğıöşüÇĞİÖŞÜ")
-    if any(c in turkish_chars for c in text):
-        return "tr"
-
-    turkish_words = {"merhaba", "nasıl", "yardım", "teşekkür", "lütfen",
-                     "evet", "hayır", "bilgi", "başvuru", "randevu",
-                     "nedir", "istiyorum", "olabilir", "benim", "için"}
-    words = set(text.lower().split())
-    if words & turkish_words:
-        return "tr"
-
-    return "en"
-
-
 def _extract_language(request: ChatCompletionRequest) -> str:
-    """Detect language from the latest user message content.
+    """Extract conversation language.
 
-    Falls back to extra_body language or 'tr' default.
+    Priority:
+    1. ElevenLabs extra_body (set by platform language_detection tool)
+    2. Default to 'tr' (Turkish government service — Turkish is the safe default)
+
+    We do NOT try to detect language from message text — short sentences
+    like "Sen robot musun?" get misclassified. ElevenLabs' native
+    language_detection system tool handles switching when needed.
     """
-    # Detect from latest user message
-    for msg in reversed(request.messages):
-        if msg.role == "user" and msg.content:
-            return _detect_language(msg.content)
-
-    # Fallback to extra_body or default
     if request.elevenlabs_extra_body:
         return request.elevenlabs_extra_body.get("language", "tr")
     return "tr"
-
-
-def _detect_previous_language(request: ChatCompletionRequest) -> str | None:
-    """Detect language from the second-to-last user message.
-
-    Returns None if there's only one user message (first turn).
-    """
-    user_messages = [m for m in request.messages if m.role == "user" and m.content]
-    if len(user_messages) < 2:
-        return None
-    return _detect_language(user_messages[-2].content)
 
 
 
@@ -256,25 +225,10 @@ async def chat_completions(request: ChatCompletionRequest):
     auth_status, citizen_profile = _extract_auth_state(request)
     language = _extract_language(request)
 
-    # Detect language switch — only trigger once per actual switch.
-    # Check if the LATEST assistant message was already in the target language.
-    # If so, no switch needed (avoids infinite loop).
-    prev_language = _detect_previous_language(request)
-    last_assistant_lang = None
-    for msg in reversed(request.messages):
-        if msg.role == "assistant" and msg.content:
-            last_assistant_lang = _detect_language(msg.content)
-            break
-
-    language_switched = (
-        prev_language is not None
-        and language != prev_language
-        and last_assistant_lang != language  # Don't re-switch if already switched
-    )
+    # Language switching is handled by ElevenLabs' native language_detection
+    # system tool — we don't detect or trigger switches ourselves.
 
     logger.info(f"Custom LLM request | conv={conversation_id} | messages={len(request.messages)} | lang={language}")
-    if language_switched:
-        logger.info(f"Language switch detected: {prev_language} → {language}")
 
     # Convert request messages to LangGraph format
     lc_messages = []
@@ -294,6 +248,7 @@ async def chat_completions(request: ChatCompletionRequest):
     async def stream():
         response_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
         has_tool_calls = False
+        sent_content = set()  # Deduplicate repeated content from graph stream
 
         yield sse_chunk(response_id, {"role": "assistant"})
 
@@ -340,7 +295,9 @@ async def chat_completions(request: ChatCompletionRequest):
                         ]
                         yield sse_chunk(response_id, {"tool_calls": tool_calls_delta})
 
-                    if content:
+                    # Deduplicate: skip if exact same content already sent
+                    if content and content not in sent_content:
+                        sent_content.add(content)
                         yield sse_chunk(response_id, {"content": content})
 
                 _cb_record_success()
@@ -349,23 +306,6 @@ async def chat_completions(request: ChatCompletionRequest):
                 logger.error(f"Graph execution error: {e}")
                 _cb_record_failure()
                 yield sse_chunk(response_id, {"content": "Bir hata olustu. Lutfen tekrar deneyin."})
-
-        # Emit language_detection tool call if user switched language
-        if language_switched:
-            has_tool_calls = True
-            lang_tool_call = {
-                "index": 0,
-                "id": f"call_{uuid.uuid4().hex[:8]}",
-                "type": "function",
-                "function": {
-                    "name": "language_detection",
-                    "arguments": json.dumps({
-                        "reason": f"User switched from {prev_language} to {language}",
-                        "language": language,
-                    }),
-                },
-            }
-            yield sse_chunk(response_id, {"tool_calls": [lang_tool_call]})
 
         finish_reason = "tool_calls" if has_tool_calls else "stop"
         yield sse_chunk(response_id, {}, finish_reason=finish_reason)
