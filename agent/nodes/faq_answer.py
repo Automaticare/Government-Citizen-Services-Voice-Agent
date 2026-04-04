@@ -78,17 +78,29 @@ EDGE_CASE_PATTERNS = {
 }
 
 
+def _normalize_turkish(text: str) -> str:
+    """Normalize Turkish special characters to ASCII for keyword matching.
+
+    ğ→g, ü→u, ş→s, ı→i, ö→o, ç→c, İ→i, Ğ→g, Ü→u, Ş→s, Ö→o, Ç→c
+    """
+    tr_map = str.maketrans("ğüşıöçĞÜŞİÖÇ", "gusioçGUSIOC")
+    return text.translate(tr_map).lower()
+
+
 def _check_edge_case(user_query: str, language: str) -> str | None:
     """Check if user message matches a known edge case pattern.
+
+    Normalizes Turkish characters before matching so both
+    "kimliğimi" and "kimligimi" match the same keyword.
 
     Returns a direct response if matched, None otherwise.
     """
     patterns = EDGE_CASE_PATTERNS.get(language, EDGE_CASE_PATTERNS["tr"])
-    query_lower = user_query.lower()
+    query_normalized = _normalize_turkish(user_query)
 
     for case_name, case_data in patterns.items():
         for keyword in case_data["keywords"]:
-            if keyword in query_lower:
+            if _normalize_turkish(keyword) in query_normalized:
                 logger.info(f"Edge case detected: {case_name} | query='{user_query[:50]}'")
                 return case_data["response"]
 

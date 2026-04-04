@@ -29,13 +29,19 @@ Respond with ONLY the intent name, nothing else. If unclear, respond with "faq".
 _llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
 
+def _normalize_turkish(text: str) -> str:
+    """Normalize Turkish special characters to ASCII for keyword matching."""
+    tr_map = str.maketrans("ğüşıöçĞÜŞİÖÇ", "gusioçGUSIOC")
+    return text.translate(tr_map).lower()
+
+
 def _pre_classify_edge_case(text: str) -> Intent | None:
     """Catch edge cases that should always route to faq (for edge case handling).
 
     These are messages that LLM might misclassify — e.g. "arkadaşımın başvurusu"
     goes to status_check but should be caught as a third-party edge case in faq.
     """
-    lower = text.lower()
+    lower = _normalize_turkish(text)
 
     # Third-party inquiry — must go to faq for edge case handling, not status_check
     third_party = ["arkadasimin", "esimin", "annemin", "babamin", "kardesimin",
