@@ -312,11 +312,10 @@ async def chat_completions(request: ChatCompletionRequest):
                         ]
                         yield sse_chunk(response_id, {"tool_calls": tool_calls_delta})
 
-                    # Stream content word-by-word for natural TTS
-                    if content and content not in sent_content:
+                    # Forward content chunks — skip empty strings
+                    if content and content.strip() and content not in sent_content:
                         sent_content.add(content)
-                        for chunk in _stream_text_as_chunks(response_id, content):
-                            yield chunk
+                        yield sse_chunk(response_id, {"content": content})
 
                 _cb_record_success()
 
