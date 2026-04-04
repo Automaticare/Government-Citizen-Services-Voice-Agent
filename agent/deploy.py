@@ -131,6 +131,159 @@ def build_agent_config(version: str, custom_llm_url: str | None = None) -> dict:
     }
 
 
+def build_auth_workflow(custom_llm_url: str | None = None, gov_api_url: str = "http://localhost:8081") -> dict:
+    """Build ElevenLabs Workflow for deterministic auth gating.
+
+    Architecture (from ElevenLabs auth blog):
+      Subagent 1 (unauthenticated) → Dispatch tool (verify) →
+        Success → Subagent 2 (authenticated, Custom LLM)
+        Failure → Subagent 3 (retry/transfer)
+
+    Auth is NOT left to LLM inference — dispatch tool returns boolean,
+    workflow edges route deterministically.
+    """
+    system_prompt_auth = (
+        "Sen Umut, Vatandas Hizmetleri sesli asistanisin. "
+        "Vatandasin kimligini dogrulamak icin TC Kimlik numarasini ve dogum tarihini topla. "
+        "Her bilgiyi TEK TEK sor, hepsini ayni anda isteme. "
+        "Oncelikle TC Kimlik numarasini sor, sonra dogum tarihini sor. "
+        "ASLA TC Kimlik numarasini geri tekrar etme. "
+        "Yanıtların sesli okunacak — rakam kullanma, sayi yazıyla yaz."
+    )
+
+    system_prompt_authenticated = (
+        "Vatandas kimlik dogrulamasi yapildi. "
+        "Artik basvuru durumu sorgulama, randevu alma, belge talebi ve diger hizmetleri sunabilirsin. "
+        "Vatandasa ismiyle hitap et."
+    )
+
+    system_prompt_retry = (
+        "Kimlik dogrulama basarisiz oldu. "
+        "Vatandasa kibarca bilgilerini kontrol etmesini ve tekrar denemesini soyle. "
+        "Dilerseniz farkli bir dogrulama yontemi (basvuru numarasi + soyad) onerebilirsin. "
+        "Eger vatandas artik denemek istemiyorsa, onu bir operatore bagla."
+    )
+
+    auth_webhook_url = f"{gov_api_url}/auth/verify/webhook"
+
+    workflow = {
+        "nodes": {
+            # Start node (required)
+            "start_node": {
+                "type": "start",
+                "position": {"x": 0.0, "y": 0.0},
+                "edge_order": ["edge_start_to_collect"],
+            },
+            # Subagent 1: Collect TC Kimlik + DOB (unauthenticated, no tools)
+            "collect_info_node": {
+                "type": "override_agent",
+                "additional_prompt": system_prompt_auth,
+                "additional_knowledge_base": [],
+                "additional_tool_ids": [],
+                "position": {"x": 0.0, "y": 150.0},
+                "edge_order": ["edge_collect_to_auth"],
+                "label": "Collect Identity",
+            },
+            # Dispatch tool: verify identity via webhook
+            "auth_tool_node": {
+                "type": "tool",
+                "position": {"x": 0.0, "y": 300.0},
+                "edge_order": ["edge_auth_success", "edge_auth_failure"],
+                "tools": [],  # Tool configured separately — webhook called by ElevenLabs
+            },
+            # Subagent 2: Authenticated — full service access via Custom LLM
+            "authenticated_node": {
+                "type": "override_agent",
+                "additional_prompt": system_prompt_authenticated,
+                "additional_knowledge_base": [],
+                "additional_tool_ids": [],
+                "position": {"x": -200.0, "y": 450.0},
+                "edge_order": ["edge_success_to_end"],
+                "label": "Authenticated Service",
+            },
+            # Subagent 3: Auth failed — retry or transfer
+            "retry_node": {
+                "type": "override_agent",
+                "additional_prompt": system_prompt_retry,
+                "additional_knowledge_base": [],
+                "additional_tool_ids": [],
+                "position": {"x": 200.0, "y": 450.0},
+                "edge_order": ["edge_retry_to_collect"],
+                "label": "Auth Retry",
+            },
+            # End nodes
+            "success_end_node": {
+                "type": "end",
+                "position": {"x": -200.0, "y": 600.0},
+                "edge_order": [],
+            },
+        },
+        "edges": {
+            # Start → Collect info (unconditional)
+            "edge_start_to_collect": {
+                "source": "start_node",
+                "target": "collect_info_node",
+                "forward_condition": {
+                    "type": "unconditional",
+                },
+            },
+            # Collect info → Auth tool (LLM decides when credentials collected)
+            "edge_collect_to_auth": {
+                "source": "collect_info_node",
+                "target": "auth_tool_node",
+                "forward_condition": {
+                    "type": "llm",
+                    "label": "Credentials collected",
+                    "condition": "User has provided both their TC Kimlik number and date of birth",
+                },
+            },
+            # Auth success → Authenticated service
+            "edge_auth_success": {
+                "source": "auth_tool_node",
+                "target": "authenticated_node",
+                "forward_condition": {
+                    "type": "result",
+                    "label": "Success",
+                    "successful": True,
+                },
+            },
+            # Auth failure → Retry
+            "edge_auth_failure": {
+                "source": "auth_tool_node",
+                "target": "retry_node",
+                "forward_condition": {
+                    "type": "result",
+                    "label": "Failure",
+                    "successful": False,
+                },
+            },
+            # Authenticated → End
+            "edge_success_to_end": {
+                "source": "authenticated_node",
+                "target": "success_end_node",
+                "forward_condition": {
+                    "type": "llm",
+                    "label": "Conversation complete",
+                    "condition": "User has no more questions and conversation should end",
+                },
+            },
+            # Retry → back to collect (backward edge)
+            "edge_retry_to_collect": {
+                "source": "retry_node",
+                "target": "collect_info_node",
+                "backward_condition": {
+                    "type": "llm",
+                    "label": "Retry with new credentials",
+                    "condition": "User wants to try again with different credentials",
+                },
+            },
+        },
+        "prevent_subagent_loops": False,
+    }
+
+    return workflow
+
+
 def deploy(version: str | None = None, dry_run: bool = False) -> None:
     """Deploy multilingual agent configuration to ElevenLabs.
 
@@ -166,10 +319,20 @@ def deploy(version: str | None = None, dry_run: bool = False) -> None:
 
     client = ElevenLabs(api_key=config.api_key)
 
+    # Build workflow for deterministic auth gating
+    gov_api_url = f"http://localhost:8081"  # Government API
+    workflow = build_auth_workflow(
+        custom_llm_url=custom_llm_url,
+        gov_api_url=gov_api_url,
+    )
+
+    logger.info(f"Workflow: {len(workflow['nodes'])} nodes, {len(workflow['edges'])} edges")
+
     agent = client.conversational_ai.agents.update(
         agent_id=config.agent_id,
         name=payload["name"],
         conversation_config=payload["conversation_config"],
+        workflow=workflow,
     )
 
     logger.info(f"Deployed successfully. Agent ID: {agent.agent_id}")
