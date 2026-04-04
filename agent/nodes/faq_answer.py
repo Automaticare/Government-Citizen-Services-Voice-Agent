@@ -22,6 +22,79 @@ _llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 # Below this score, retrieval is considered irrelevant
 RELEVANCE_THRESHOLD = 0.3
 
+EDGE_CASE_PATTERNS = {
+    "tr": {
+        "auth_refusal": {
+            "keywords": ["kimligimi vermek istemiyorum", "kimlik vermek istemiyorum", "kimligimi paylasmak", "vermeyecegim", "paylasma"],
+            "response": "Kimlik dogrulamasi olmadan kisisel bilgilere erisemiyorum. Ancak genel sorulariniza yardimci olabilirim. Ne sormak istersiniz?",
+        },
+        "third_party": {
+            "keywords": ["arkadasimin", "esimin", "annemin", "babamin", "kardesimin", "baskasinin", "onun basvurusu"],
+            "response": "Guvenlik nedeniyle sadece kendi kimliginizle dogrulama yapabilirsiniz. Sormak istediginiz kisinin bizzat aramasi gerekiyor.",
+        },
+        "partial_tc": {
+            "keywords": ["sonu", "ile biten", "son hanesi", "ilk hanesi", "hatirlamiyorum", "tam bilmiyorum"],
+            "response": "Dogrulama icin 11 haneli TC Kimlik numarasinin tamamina ihtiyacim var. Kimlik kartinizin on yuzunde yazıyor. Lutfen tam numarayi soyler misiniz?",
+        },
+        "robot_question": {
+            "keywords": ["robot musun", "gercek insan", "yapay zeka", "bot musun", "insan misin", "makine misin"],
+            "response": "Ben Umut, Vatandas Hizmetleri sesli asistaniyim. Yapay zeka destekli bir sistemim. Size devlet hizmetleri konusunda yardimci olabilirim. Isterseniz bir insan operatore de baglayabilirim.",
+        },
+        "anger": {
+            "keywords": ["siktir", "amina", "orospu", "salak", "aptal", "gerizekali", "lanet", "sikeyim"],
+            "response": "Uzgunlugunuzu anliyorum. Size daha iyi yardimci olabilmesi icin sizi bir operatore bagliyorum.",
+        },
+        "previous_call": {
+            "keywords": ["gecen aradigimda", "daha once aramistim", "onceki gorusmemde", "gecen sefer"],
+            "response": "Maalesef onceki gorusmelerin detaylarina erisemiyorum. Size simdi nasil yardimci olabilirim? Basvuru durumu sorgulamak, randevu almak veya genel bilgi almak isterseniz yardimci olabilirim.",
+        },
+    },
+    "en": {
+        "auth_refusal": {
+            "keywords": ["don't want to give my id", "refuse to provide", "won't share my id", "not giving"],
+            "response": "I cannot access personal information without identity verification. However, I can help with general questions. What would you like to know?",
+        },
+        "third_party": {
+            "keywords": ["my friend's", "my wife's", "my husband's", "someone else's", "their application", "my mother's", "my father's"],
+            "response": "For security reasons, I can only verify your own identity. The person in question would need to call us directly.",
+        },
+        "partial_tc": {
+            "keywords": ["ending in", "starts with", "last digits", "don't remember the full", "partial"],
+            "response": "I need the full 11-digit TC Kimlik number for verification. You can find it on the front of your ID card. Could you please provide the complete number?",
+        },
+        "robot_question": {
+            "keywords": ["are you a robot", "real person", "artificial intelligence", "are you a bot", "are you human", "machine"],
+            "response": "I'm Umut, the Citizen Services voice assistant. I'm an AI-powered system. I can help you with government services. If you prefer, I can connect you with a human operator.",
+        },
+        "anger": {
+            "keywords": ["fuck", "shit", "damn", "stupid", "idiot", "bullshit", "asshole"],
+            "response": "I understand your frustration. Let me connect you with a human operator who can better assist you.",
+        },
+        "previous_call": {
+            "keywords": ["last time i called", "previous call", "when i called before", "last conversation"],
+            "response": "I'm sorry, I don't have access to previous call details. How can I help you now? I can check application status, book appointments, or provide general information.",
+        },
+    },
+}
+
+
+def _check_edge_case(user_query: str, language: str) -> str | None:
+    """Check if user message matches a known edge case pattern.
+
+    Returns a direct response if matched, None otherwise.
+    """
+    patterns = EDGE_CASE_PATTERNS.get(language, EDGE_CASE_PATTERNS["tr"])
+    query_lower = user_query.lower()
+
+    for case_name, case_data in patterns.items():
+        for keyword in case_data["keywords"]:
+            if keyword in query_lower:
+                logger.info(f"Edge case detected: {case_name} | query='{user_query[:50]}'")
+                return case_data["response"]
+
+    return None
+
+
 RAG_SYSTEM_PROMPT = """You are a government citizen services assistant named Umut.
 Answer the user's question based ONLY on the provided context documents.
 
@@ -68,6 +141,15 @@ def faq_answer(state: AgentState) -> dict:
 
     if not user_query:
         user_query = "general information"
+
+    # Step 0: Check edge cases BEFORE RAG — these need direct responses, not retrieval
+    edge_response = _check_edge_case(user_query, language)
+    if edge_response:
+        from langchain_core.messages import AIMessage
+        return {
+            "messages": [AIMessage(content=edge_response)],
+            "completed_intents": mark_completed(state, state.get("current_intent", "faq")),
+        }
 
     # Step 1: Retrieve from Pinecone (top_k=5 for better coverage across doc types)
     results = search(query=user_query, language=language, top_k=5)
