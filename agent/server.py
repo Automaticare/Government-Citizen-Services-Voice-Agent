@@ -265,7 +265,6 @@ async def chat_completions(request: ChatCompletionRequest):
     async def stream():
         response_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
         has_tool_calls = False
-        sent_content = set()  # Deduplicate repeated content from graph stream
 
         yield sse_chunk(response_id, {"role": "assistant"})
 
@@ -283,19 +282,17 @@ async def chat_completions(request: ChatCompletionRequest):
                 if citizen_profile:
                     graph_input["citizen_profile"] = citizen_profile
 
-                async for message_chunk, metadata in graph.astream(
-                    graph_input,
-                    stream_mode="messages",
-                ):
-                    node = metadata.get("langgraph_node", "")
-                    content = getattr(message_chunk, "content", None)
-                    tool_calls = getattr(message_chunk, "additional_kwargs", {}).get("tool_calls")
+                # Step 1: LangGraph determines intent, runs tools, gets context
+                # (no LLM streaming here — just routing + tool calls)
+                result = await graph.ainvoke(graph_input)
 
-                    # Skip routing/classification nodes
-                    if node in ("intent_classify", "service_router"):
-                        continue
+                final_messages = result.get("messages", [])
+                if not final_messages:
+                    yield sse_chunk(response_id, {"content": "Bir hata olustu."})
+                else:
+                    last_msg = final_messages[-1]
+                    tool_calls = getattr(last_msg, "additional_kwargs", {}).get("tool_calls")
 
-                    # Forward tool_calls (e.g. transfer_to_number)
                     if tool_calls:
                         has_tool_calls = True
                         tool_calls_delta = [
@@ -312,10 +309,23 @@ async def chat_completions(request: ChatCompletionRequest):
                         ]
                         yield sse_chunk(response_id, {"tool_calls": tool_calls_delta})
 
-                    # Forward content chunks — skip empty strings
-                    if content and content.strip() and content not in sent_content:
-                        sent_content.add(content)
-                        yield sse_chunk(response_id, {"content": content})
+                    # Step 2: Stream the response sentence by sentence with
+                    # small delays between sentences. This gives ElevenLabs TTS
+                    # time to process each sentence before the next arrives —
+                    # mimicking real LLM token-by-token timing.
+                    content = getattr(last_msg, "content", None)
+                    if content and content.strip():
+                        import asyncio
+                        # Split by sentence boundaries
+                        import re
+                        sentences = re.split(r'(?<=[.!?])\s+', content.strip())
+
+                        for i, sentence in enumerate(sentences):
+                            if sentence.strip():
+                                yield sse_chunk(response_id, {"content": sentence + " "})
+                                # Small delay between sentences for TTS processing
+                                if i < len(sentences) - 1:
+                                    await asyncio.sleep(0.08)
 
                 _cb_record_success()
 
