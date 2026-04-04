@@ -2,11 +2,12 @@
 FAQ answer node.
 
 Retrieves relevant documents from Pinecone knowledge base (RAG),
-then uses LLM to generate a grounded answer. Agent cites the source
-and refuses to answer beyond what the documents contain.
+then uses LLM to generate a grounded answer. Handles edge cases
+(auth refusal, third-party inquiry, meta questions, etc.) via
+LLM instructions — no hardcoded keyword matching.
 """
 
-from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from langchain_openai import ChatOpenAI
 
 from agent.state import AgentState
@@ -19,128 +20,43 @@ logger = get_logger(__name__)
 
 _llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
-# Below this score, retrieval is considered irrelevant
 RELEVANCE_THRESHOLD = 0.3
 
-EDGE_CASE_PATTERNS = {
-    "tr": {
-        "auth_refusal": {
-            "keywords": ["kimligimi vermek istemiyorum", "kimlik vermek istemiyorum", "kimligimi paylasmak", "vermeyecegim", "paylasma"],
-            "response": "Kimlik dogrulamasi olmadan kisisel bilgilere erisemiyorum. Ancak genel sorulariniza yardimci olabilirim. Ne sormak istersiniz?",
-        },
-        "third_party": {
-            "keywords": ["arkadasimin", "esimin", "annemin", "babamin", "kardesimin", "baskasinin", "onun basvurusu"],
-            "response": "Guvenlik nedeniyle sadece kendi kimliginizle dogrulama yapabilirsiniz. Sormak istediginiz kisinin bizzat aramasi gerekiyor.",
-        },
-        "partial_tc": {
-            "keywords": ["sonu", "ile biten", "son hanesi", "ilk hanesi", "hatirlamiyorum", "tam bilmiyorum"],
-            "response": "Dogrulama icin 11 haneli TC Kimlik numarasinin tamamina ihtiyacim var. Kimlik kartinizin on yuzunde yazıyor. Lutfen tam numarayi soyler misiniz?",
-        },
-        "robot_question": {
-            "keywords": ["robot musun", "gercek insan", "yapay zeka", "bot musun", "insan misin", "makine misin"],
-            "response": "Ben Umut, Vatandas Hizmetleri sesli asistaniyim. Yapay zeka destekli bir sistemim. Size devlet hizmetleri konusunda yardimci olabilirim. Isterseniz bir insan operatore de baglayabilirim.",
-        },
-        "anger": {
-            "keywords": ["siktir", "amina", "orospu", "salak", "aptal", "gerizekali", "lanet", "sikeyim"],
-            "response": "Uzgunlugunuzu anliyorum. Size daha iyi yardimci olabilmesi icin sizi bir operatore bagliyorum.",
-        },
-        "previous_call": {
-            "keywords": ["gecen aradigimda", "daha once aramistim", "onceki gorusmemde", "gecen sefer"],
-            "response": "Maalesef onceki gorusmelerin detaylarina erisemiyorum. Size simdi nasil yardimci olabilirim? Basvuru durumu sorgulamak, randevu almak veya genel bilgi almak isterseniz yardimci olabilirim.",
-        },
-    },
-    "en": {
-        "auth_refusal": {
-            "keywords": ["don't want to give my id", "refuse to provide", "won't share my id", "not giving"],
-            "response": "I cannot access personal information without identity verification. However, I can help with general questions. What would you like to know?",
-        },
-        "third_party": {
-            "keywords": ["my friend's", "my wife's", "my husband's", "someone else's", "their application", "my mother's", "my father's"],
-            "response": "For security reasons, I can only verify your own identity. The person in question would need to call us directly.",
-        },
-        "partial_tc": {
-            "keywords": ["ending in", "starts with", "last digits", "don't remember the full", "partial"],
-            "response": "I need the full 11-digit TC Kimlik number for verification. You can find it on the front of your ID card. Could you please provide the complete number?",
-        },
-        "robot_question": {
-            "keywords": ["are you a robot", "real person", "artificial intelligence", "are you a bot", "are you human", "machine"],
-            "response": "I'm Umut, the Citizen Services voice assistant. I'm an AI-powered system. I can help you with government services. If you prefer, I can connect you with a human operator.",
-        },
-        "anger": {
-            "keywords": ["fuck", "shit", "damn", "stupid", "idiot", "bullshit", "asshole"],
-            "response": "I understand your frustration. Let me connect you with a human operator who can better assist you.",
-        },
-        "previous_call": {
-            "keywords": ["last time i called", "previous call", "when i called before", "last conversation"],
-            "response": "I'm sorry, I don't have access to previous call details. How can I help you now? I can check application status, book appointments, or provide general information.",
-        },
-    },
-}
+RAG_SYSTEM_PROMPT = """You are a government citizen services voice assistant named Umut.
+Your response will be spoken aloud — never use tables, bullet points, or markdown.
 
+ANSWERING QUESTIONS:
+- If context documents are provided, answer based ONLY on them. Do not make up information.
+- Convert structured data (tables, lists) into natural conversational sentences.
+- Keep it concise — a phone caller doesn't want a long lecture.
+- Do NOT add specific numbers, dates, or amounts not explicitly in the context.
+- Mention the source briefly ("pasaport hizmetleri bilgilerine gore...").
 
-def _normalize_turkish(text: str) -> str:
-    """Normalize Turkish special characters to ASCII for keyword matching.
+EDGE CASE HANDLING (respond naturally, no need for documents):
+- Identity refusal ("kimliğimi vermek istemiyorum"): Say you cannot access personal info without verification, but offer to help with general questions. Do NOT push or insist on ID.
+- Third-party inquiry ("arkadaşımın başvurusu"): Explain that for security, you can only verify the caller's own identity. The other person needs to call directly. Never share anyone else's data.
+- Partial ID ("sonu 901 ile bitiyor"): Explain you need the full 11-digit TC Kimlik number. Mention it's on the front of their ID card.
+- Robot/AI question ("sen robot musun?"): Introduce yourself honestly as Umut, an AI-powered voice assistant. Offer to connect with a human if they prefer.
+- Previous call reference ("geçen aradığımda"): Explain you don't have access to previous call records. Offer to help with their current need.
+- Capability question ("ne yapabilirsin?"): Briefly list what you can help with: application status, appointments, document requests, general info, complaints.
+- Anger/profanity: Acknowledge their frustration calmly. Offer to transfer to a human operator immediately.
+- Vague date ("doksanlı yıllar"): Ask for exact day, month, and year.
 
-    ğ→g, ü→u, ş→s, ı→i, ö→o, ç→c, İ→i, Ğ→g, Ü→u, Ş→s, Ö→o, Ç→c
-    """
-    tr_map = str.maketrans("ğüşıöçĞÜŞİÖÇ", "gusioçGUSIOC")
-    return text.translate(tr_map).lower()
-
-
-def _check_edge_case(user_query: str, language: str) -> str | None:
-    """Check if user message matches a known edge case pattern.
-
-    Normalizes Turkish characters before matching so both
-    "kimliğimi" and "kimligimi" match the same keyword.
-
-    Returns a direct response if matched, None otherwise.
-    """
-    patterns = EDGE_CASE_PATTERNS.get(language, EDGE_CASE_PATTERNS["tr"])
-    query_normalized = _normalize_turkish(user_query)
-
-    for case_name, case_data in patterns.items():
-        for keyword in case_data["keywords"]:
-            if _normalize_turkish(keyword) in query_normalized:
-                logger.info(f"Edge case detected: {case_name} | query='{user_query[:50]}'")
-                return case_data["response"]
-
-    return None
-
-
-RAG_SYSTEM_PROMPT = """You are a government citizen services assistant named Umut.
-Answer the user's question based ONLY on the provided context documents.
-
-Rules:
-- Only use information from the provided context. Do not make up information.
-- If the context does not contain the answer, say so honestly and offer to connect with a human operator.
-- Mention the source category briefly when answering.
-- CRITICAL: Your response will be spoken aloud by a voice agent, NOT displayed as text.
-  - Never use tables, bullet points, markdown formatting, or numbered lists.
-  - Convert all structured data into natural conversational sentences.
-  - For schedules: "Hafta ici her gun sabah sekizden aksam bese kadar hizmet veriyoruz" instead of listing each day.
-  - For document lists: "Basvuru icin kimlik karti, iki adet fotograf ve harc dekontu gerekiyor" instead of bullet points.
-  - For fees: "On yillik pasaport ucreti bes bin yedi yuz elli lira" instead of tables.
-  - Keep it concise — a phone caller doesn't want to hear a long list read out.
-  - Summarize where possible, offer to provide more details if needed.
-- If the context documents do NOT contain the specific information the user is asking about, say "Bu konuda elimde kesin bir bilgi yok" — do NOT guess, infer, or add details not explicitly stated in the context.
-- Do NOT add specific numbers (minutes, amounts, dates) that are not in the context. If the context says "dilim" but not "15 dakika", do NOT say "15 dakikalık dilimler".
-- Do NOT suggest transferring to a human operator unless the user explicitly asks for it or the question is truly unanswerable.
+RULES:
+- Do NOT suggest transferring to a human operator unless the user explicitly asks or is clearly frustrated.
 - Respond in {language_name}.
 
-Context documents:
-{context}"""
+{context_section}"""
 
-NO_RESULTS_TR = ("Bu konuda bilgi tabanımızda yeterli bilgi bulamadım. "
-                 "Dilerseniz sizi daha detaylı yardımcı olabilecek bir operatöre bağlayabilirim. "
-                 "Başka bir konuda yardımcı olabilir miyim?")
+NO_RESULTS_TR = ("Bu konuda bilgi tabanimizda yeterli bilgi bulamadim. "
+                 "Baska bir konuda yardimci olabilir miyim?")
 
 NO_RESULTS_EN = ("I couldn't find sufficient information about this in our knowledge base. "
-                 "I can connect you with a human operator for more detailed assistance. "
                  "Is there anything else I can help you with?")
 
 
 def faq_answer(state: AgentState) -> dict:
-    """Answer a question using RAG — retrieve from Pinecone, then generate grounded response."""
+    """Answer a question using RAG + LLM with edge case handling."""
     language = state.get("language", "tr")
     messages = state.get("messages", [])
 
@@ -154,44 +70,30 @@ def faq_answer(state: AgentState) -> dict:
     if not user_query:
         user_query = "general information"
 
-    # Step 0: Check edge cases BEFORE RAG — these need direct responses, not retrieval
-    edge_response = _check_edge_case(user_query, language)
-    if edge_response:
-        from langchain_core.messages import AIMessage
-        return {
-            "messages": [AIMessage(content=edge_response)],
-            "completed_intents": mark_completed(state, state.get("current_intent", "faq")),
-        }
-
-    # Step 1: Retrieve from Pinecone (top_k=5 for better coverage across doc types)
+    # Step 1: Retrieve from Pinecone
     results = search(query=user_query, language=language, top_k=5)
 
-    # Step 2: Check relevance
-    if not results or results[0].score < RELEVANCE_THRESHOLD:
-        logger.info(f"FAQ — no relevant results | query='{user_query[:50]}' | language={language}")
-        no_result_msg = NO_RESULTS_EN if language == "en" else NO_RESULTS_TR
-        from langchain_core.messages import AIMessage
-        return {
-            "messages": [AIMessage(content=no_result_msg)],
-            "completed_intents": mark_completed(state, state.get("current_intent", "faq")),
-        }
+    # Step 2: Build context section
+    if results and results[0].score >= RELEVANCE_THRESHOLD:
+        context = format_context(results)
+        context_section = f"Context documents:\n{context}"
+        source_categories = set(r.category for r in results)
+        logger.info(f"FAQ (RAG) | language={language} | sources={source_categories} | top_score={results[0].score:.3f}")
+    else:
+        context_section = "No relevant documents found. Handle based on edge case rules above, or say you don't have the information."
+        logger.info(f"FAQ (no RAG match) | language={language} | query='{user_query[:50]}'")
 
-    # Step 3: Build grounded prompt with retrieved context
-    context = format_context(results)
+    # Step 3: Generate response
     language_name = "English" if language == "en" else "Turkish"
-
     system_prompt = RAG_SYSTEM_PROMPT.format(
         language_name=language_name,
-        context=context,
+        context_section=context_section,
     )
 
     response = _llm.invoke([
         SystemMessage(content=system_prompt),
         HumanMessage(content=user_query),
     ])
-
-    source_categories = set(r.category for r in results)
-    logger.info(f"FAQ answered (RAG) | language={language} | sources={source_categories} | top_score={results[0].score:.3f}")
 
     return {
         "messages": [response],

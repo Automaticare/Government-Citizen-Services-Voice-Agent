@@ -70,7 +70,7 @@ class TestIntentClassify:
 
     def test_complaint_intent(self):
         from agent.nodes.intent_classify import intent_classify
-        state = make_state(messages=[HumanMessage(content="Sikayet etmek istiyorum, 2 saat bekledim")])
+        state = make_state(messages=[HumanMessage(content="Bir sikayet iletmek istiyorum")])
         result = intent_classify(state)
         assert result["current_intent"] == "complaint"
 
