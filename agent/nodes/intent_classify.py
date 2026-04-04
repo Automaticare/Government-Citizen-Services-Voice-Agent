@@ -33,7 +33,9 @@ Analyze the user's latest message and classify their intent into exactly ONE of 
 Important rules:
 - If the user asks about SOMEONE ELSE's application (friend, spouse, parent), classify as "faq" NOT "status_check"
 - If the user mentions a PREVIOUS CALL or prior conversation, classify as "faq" NOT "complaint"
-- If the user is angry or using profanity, classify as "escalate" regardless of what they're asking about
+- If the user is angry or using ACTUAL profanity/swear words, classify as "escalate"
+- If the user simply changes topic ("bırak onu, şikayet etmek istiyorum"), classify based on the NEW topic, not frustration
+- Topic change phrases like "bırak", "geç onu", "tamam onu boşver" are NOT anger — they just mean the user wants to move on
 - If unclear, respond with "faq"
 
 Respond with ONLY the intent name, nothing else."""
