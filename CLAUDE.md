@@ -135,6 +135,7 @@ make test-live         # Live API + simulation tests
 - **ISSUE-12:** RAG Integration — faq_answer grounded in Pinecone (no hallucination), status_check chains to RAG for required docs + appeal rights
 - **ISSUE-13:** Mock Government API — IN PROGRESS
   - [x] Appointment and DocumentRequest DB models + seed data (5 appointments, 3 doc requests)
+  - [x] API endpoints: GET /applications/{ref}, POST /appointments, GET /appointments/{citizen_id}, POST /documents/request, GET /services
 
 ### Next: ISSUE-08 — Remaining Manual Tasks
 - [ ] Set up public URL (ngrok http 8000) for ElevenLabs to reach our server
