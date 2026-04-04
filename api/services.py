@@ -152,10 +152,37 @@ def get_application_status(ref_number: str, db: Session = Depends(get_db)):
 
 @router.post("/appointments", response_model=AppointmentResponse)
 def book_appointment(request: AppointmentRequest, db: Session = Depends(get_db)):
-    """Book a new appointment."""
+    """Book a new appointment with edge case handling."""
     citizen = db.query(Citizen).filter(Citizen.id == request.citizen_id).first()
     if not citizen:
         raise HTTPException(status_code=404, detail="Citizen not found")
+
+    # Edge case: past date
+    if request.preferred_date:
+        from datetime import date as date_type
+        try:
+            preferred = date_type.fromisoformat(request.preferred_date)
+            if preferred < date_type.today():
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cannot book an appointment in the past. Please choose a future date."
+                )
+        except ValueError:
+            pass  # Invalid date format — let it fall through to slot matching
+
+    # Edge case: duplicate appointment (same citizen, same service, same date)
+    if request.preferred_date:
+        existing = db.query(Appointment).filter(
+            Appointment.citizen_id == request.citizen_id,
+            Appointment.service_type == request.service_type,
+            Appointment.appointment_date == request.preferred_date,
+            Appointment.status == "confirmed",
+        ).first()
+        if existing:
+            raise HTTPException(
+                status_code=409,
+                detail=f"You already have a {request.service_type} appointment on {request.preferred_date} at {existing.appointment_time}."
+            )
 
     # Find first available slot
     office = None
@@ -173,7 +200,7 @@ def book_appointment(request: AppointmentRequest, db: Session = Depends(get_db))
             break
 
     if not office:
-        raise HTTPException(status_code=409, detail="No available appointment slots for the requested date")
+        raise HTTPException(status_code=409, detail="No available appointment slots for the requested date. Please try a different date.")
 
     appointment = Appointment(
         citizen_id=request.citizen_id,

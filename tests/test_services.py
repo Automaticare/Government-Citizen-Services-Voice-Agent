@@ -89,6 +89,31 @@ class TestAppointmentBooking:
         assert r.status_code == 200
         assert r.json() == []
 
+    def test_past_date_rejected(self):
+        r = client.post("/appointments", json={
+            "citizen_id": 1,
+            "service_type": "passport",
+            "preferred_date": "2020-01-01",
+        })
+        assert r.status_code == 400
+        assert "past" in r.json()["detail"].lower()
+
+    def test_duplicate_appointment_rejected(self):
+        # Book first
+        client.post("/appointments", json={
+            "citizen_id": 2,
+            "service_type": "id_card",
+            "preferred_date": "2026-04-08",
+        })
+        # Try same again
+        r = client.post("/appointments", json={
+            "citizen_id": 2,
+            "service_type": "id_card",
+            "preferred_date": "2026-04-08",
+        })
+        assert r.status_code == 409
+        assert "already" in r.json()["detail"].lower()
+
 
 class TestDocumentRequest:
     """Test POST /documents/request."""

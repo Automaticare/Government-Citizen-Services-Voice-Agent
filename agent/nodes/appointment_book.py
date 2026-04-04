@@ -16,8 +16,11 @@ logger = get_logger(__name__)
 API_BASE = "http://localhost:8001"
 
 
-def _book_via_api(citizen_id: int, service_type: str, preferred_date: str | None) -> dict | None:
-    """Call government API to book appointment."""
+def _book_via_api(citizen_id: int, service_type: str, preferred_date: str | None) -> tuple[dict | None, str | None]:
+    """Call government API to book appointment.
+
+    Returns (result_dict, error_message). On success error is None.
+    """
     try:
         payload = {
             "citizen_id": citizen_id,
@@ -26,12 +29,16 @@ def _book_via_api(citizen_id: int, service_type: str, preferred_date: str | None
         }
         r = httpx.post(f"{API_BASE}/appointments", json=payload, timeout=5.0)
         if r.status_code == 200:
-            return r.json()
-        logger.warning(f"Appointment API returned {r.status_code}: {r.text}")
-        return None
+            return r.json(), None
+
+        # Parse API error message for user-friendly feedback
+        error_detail = r.json().get("detail", "") if r.headers.get("content-type", "").startswith("application/json") else ""
+        logger.warning(f"Appointment API returned {r.status_code}: {error_detail}")
+        return None, error_detail
+
     except httpx.RequestError as e:
         logger.error(f"Appointment API unreachable: {e}")
-        return None
+        return None, "service_unavailable"
 
 
 def appointment_book(state: AgentState) -> dict:
@@ -52,7 +59,7 @@ def appointment_book(state: AgentState) -> dict:
     citizen_id = profile.get("citizen_id")
 
     # Call government API
-    result = _book_via_api(citizen_id, "general", None)
+    result, error = _book_via_api(citizen_id, "general", None)
 
     if result:
         date = result.get("appointment_date", "")
@@ -67,6 +74,18 @@ def appointment_book(state: AgentState) -> dict:
             msg = (f"{first_name}, randevunuz olusturuldu. "
                    f"Tarih: {date}, Saat: {time}, Yer: {office}. "
                    f"Lutfen nufus cuzdaninizi ve gerekli belgeleri yaninizda getirin.")
+    elif error and "past" in error.lower():
+        msg = (f"{first_name}, past dates cannot be selected for appointments. Please choose a future date."
+               if language == "en" else
+               f"{first_name}, gecmis bir tarih icin randevu alinamaz. Lutfen ileri bir tarih secin.")
+    elif error and "already have" in error.lower():
+        msg = (f"{first_name}, {error}"
+               if language == "en" else
+               f"{first_name}, bu hizmet icin ayni tarihte zaten bir randevunuz var.")
+    elif error and "no available" in error.lower():
+        msg = (f"{first_name}, there are no available slots for that date. Would you like to try a different date?"
+               if language == "en" else
+               f"{first_name}, bu tarih icin musait randevu yok. Baska bir tarih denemek ister misiniz?")
     else:
         if language == "en":
             msg = (f"{first_name}, I wasn't able to book an appointment right now. "
