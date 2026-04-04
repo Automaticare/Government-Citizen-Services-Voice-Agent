@@ -1,7 +1,8 @@
 """
 Status check node.
 
-Queries the application status and chains results deterministically:
+Calls the government API to get real application status, then
+chains results deterministically:
 - If "additional_docs_needed" → RAG query for required documents (Pinecone)
 - If "rejected" → RAG query for appeal rights + guidance
 - Otherwise → return status directly
@@ -11,6 +12,7 @@ ElevenLabs native tools can't guarantee "status API returned X,
 therefore automatically query knowledge base for Y."
 """
 
+import httpx
 from langchain_core.messages import AIMessage
 
 from agent.state import AgentState
@@ -20,13 +22,28 @@ from rag.retriever import search, format_context
 
 logger = get_logger(__name__)
 
+API_BASE = "http://localhost:8001"
+
 
 def _rag_lookup(query: str, language: str, category: str | None = None) -> str:
-    """Query RAG for supplementary information. Returns formatted context or empty string."""
+    """Query RAG for supplementary information."""
     results = search(query=query, language=language, category=category, top_k=2)
     if results and results[0].score > 0.3:
         return format_context(results)
     return ""
+
+
+def _fetch_status(application_ref: str) -> dict | None:
+    """Call government API for application status."""
+    try:
+        r = httpx.get(f"{API_BASE}/applications/{application_ref}", timeout=5.0)
+        if r.status_code == 200:
+            return r.json()
+        logger.warning(f"Status API returned {r.status_code} for {application_ref}")
+        return None
+    except httpx.RequestError as e:
+        logger.error(f"Status API unreachable: {e}")
+        return None
 
 
 def status_check(state: AgentState) -> dict:
@@ -44,13 +61,23 @@ def status_check(state: AgentState) -> dict:
         }
 
     app_ref = profile.get("application_ref", "")
-    status = profile.get("application_status", "unknown")
     first_name = profile.get("first_name", "")
+
+    # Call government API for real status
+    api_result = _fetch_status(app_ref)
+
+    if api_result:
+        status = api_result.get("status", "unknown")
+        estimated = api_result.get("estimated_completion", "")
+    else:
+        # Fallback to profile data if API is down
+        status = profile.get("application_status", "unknown")
+        estimated = ""
+        logger.warning("Status API unavailable — using profile data as fallback")
 
     # --- Deterministic tool chaining based on status ---
 
     if status == "additional_docs_needed":
-        # Chain: status → RAG query for required documents
         rag_query = "required documents for application" if language == "en" else "basvuru icin gerekli belgeler"
         docs_context = _rag_lookup(rag_query, language)
         logger.info(f"Tool chain: status=additional_docs_needed -> RAG docs lookup (found={bool(docs_context)})")
@@ -67,7 +94,6 @@ def status_check(state: AgentState) -> dict:
             msg += "\nBu belgeleri en yakin vatandas hizmetleri ofisine teslim edebilirsiniz."
 
     elif status == "rejected":
-        # Chain: status → RAG query for appeal rights
         rag_query = "appeal rights rejected application" if language == "en" else "itiraz hakki reddedilen basvuru"
         appeal_context = _rag_lookup(rag_query, language, category="general")
         logger.info(f"Tool chain: status=rejected -> RAG appeal lookup (found={bool(appeal_context)})")
@@ -96,14 +122,14 @@ def status_check(state: AgentState) -> dict:
                    f"Belgelerinizi en yakin vatandas hizmetleri ofisinden teslim alabilirsiniz.")
 
     elif status == "in_review":
+        eta = f" Estimated completion: {estimated}." if estimated else ""
         if language == "en":
-            msg = (f"{first_name}, your application {app_ref} is currently under review. "
-                   f"Estimated completion time is 5-10 business days.")
+            msg = (f"{first_name}, your application {app_ref} is currently under review.{eta}")
         else:
-            msg = (f"{first_name}, {app_ref} numarali basvurunuz inceleme asamasindadir. "
-                   f"Tahmini tamamlanma suresi 5-10 is gunudur.")
+            eta_tr = f" Tahmini tamamlanma suresi: {estimated}." if estimated else ""
+            msg = (f"{first_name}, {app_ref} numarali basvurunuz inceleme asamasindadir.{eta_tr}")
 
-    else:  # pending or unknown
+    else:
         if language == "en":
             msg = (f"{first_name}, your application {app_ref} is currently in '{status}' status. "
                    f"Is there anything else I can help you with?")

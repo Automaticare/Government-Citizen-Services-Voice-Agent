@@ -137,6 +137,11 @@ make test-live         # Live API + simulation tests
   - [x] Appointment and DocumentRequest DB models + seed data (5 appointments, 3 doc requests)
   - [x] API endpoints: GET /applications/{ref}, POST /appointments, GET /appointments/{citizen_id}, POST /documents/request, GET /services
 - ISSUE-13: COMPLETE
+- **ISSUE-14:** Tool Calling — IN PROGRESS
+  - [x] citizen_id added to auth response profile
+  - [x] status_check calls GET /applications/{ref} with API fallback
+  - [x] appointment_book calls POST /appointments with API fallback
+  - [x] document_request calls POST /documents/request with API fallback
 
 ### Next: ISSUE-08 — Remaining Manual Tasks
 - [ ] Set up public URL (ngrok http 8000) for ElevenLabs to reach our server

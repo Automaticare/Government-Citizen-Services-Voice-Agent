@@ -56,8 +56,13 @@ def _hash(value: str) -> str:
 
 
 def _citizen_to_safe_profile(citizen: Citizen) -> dict:
-    """Convert citizen record to a safe profile (no raw PII)."""
+    """Convert citizen record to a safe profile (no raw PII).
+
+    Includes citizen_id for subsequent API calls (appointment, document).
+    This is safe — citizen_id is an internal DB integer, not PII.
+    """
     return {
+        "citizen_id": citizen.id,
         "first_name": citizen.first_name,
         "last_name_initial": citizen.last_name[0] + "***",
         "application_ref": citizen.application_ref,

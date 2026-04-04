@@ -36,6 +36,7 @@ ApplicationStatus = Literal[
 
 class CitizenProfile(TypedDict, total=False):
     """Safe citizen profile — no raw PII."""
+    citizen_id: int
     first_name: str
     last_name_initial: str
     application_ref: str
