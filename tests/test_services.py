@@ -1,0 +1,141 @@
+"""
+Tests for government services API endpoints and LangGraph node integration.
+
+Unit tests: API endpoints via TestClient (no real server needed).
+Integration tests: LangGraph nodes calling real API via TestClient.
+"""
+
+import pytest
+from fastapi.testclient import TestClient
+
+from api.server import app
+from api.models import Citizen, Appointment, DocumentRequest
+from tests.conftest import TestSession
+
+
+client = TestClient(app)
+
+
+class TestApplicationStatus:
+    """Test GET /applications/{ref_number}."""
+
+    def test_existing_application(self):
+        r = client.get("/applications/2024-TR-0001")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["application_ref"] == "2024-TR-0001"
+        assert data["status"] == "in_review"
+        assert data["first_name"] == "Ahmet"
+        assert data["last_name_initial"] == "Y***"
+        assert data["estimated_completion"] is not None
+
+    def test_unknown_application_404(self):
+        r = client.get("/applications/9999-XX-0000")
+        assert r.status_code == 404
+
+    def test_case_insensitive_ref(self):
+        r = client.get("/applications/2024-tr-0001")
+        assert r.status_code == 200
+
+    def test_profile_has_no_full_lastname(self):
+        r = client.get("/applications/2024-TR-0001")
+        assert "Yilmaz" not in str(r.json())
+
+
+class TestAppointmentBooking:
+    """Test POST /appointments and GET /appointments/{citizen_id}."""
+
+    def test_book_appointment(self):
+        r = client.post("/appointments", json={
+            "citizen_id": 1,
+            "service_type": "passport",
+            "preferred_date": "2026-04-07",
+        })
+        assert r.status_code == 200
+        data = r.json()
+        assert data["status"] == "confirmed"
+        assert data["office"] != ""
+        assert data["appointment_date"] == "2026-04-07"
+
+    def test_book_without_preferred_date(self):
+        r = client.post("/appointments", json={
+            "citizen_id": 2,
+            "service_type": "id_card",
+            "preferred_date": "",
+        })
+        assert r.status_code == 200
+
+    def test_unknown_citizen_404(self):
+        r = client.post("/appointments", json={
+            "citizen_id": 99999,
+            "service_type": "passport",
+            "preferred_date": "2026-04-07",
+        })
+        assert r.status_code == 404
+
+    def test_get_appointments(self):
+        # Book one first
+        client.post("/appointments", json={
+            "citizen_id": 1,
+            "service_type": "passport",
+            "preferred_date": "2026-04-07",
+        })
+        r = client.get("/appointments/1")
+        assert r.status_code == 200
+        assert len(r.json()) >= 1
+
+    def test_get_appointments_empty(self):
+        r = client.get("/appointments/99999")
+        assert r.status_code == 200
+        assert r.json() == []
+
+
+class TestDocumentRequest:
+    """Test POST /documents/request."""
+
+    def test_request_document(self):
+        r = client.post("/documents/request", json={
+            "citizen_id": 1,
+            "document_type": "birth_certificate",
+        })
+        assert r.status_code == 200
+        data = r.json()
+        assert data["request_ref"].startswith("DOC-2026-")
+        assert data["status"] == "processing"
+        assert data["estimated_days"] == 3
+
+    def test_unknown_citizen_404(self):
+        r = client.post("/documents/request", json={
+            "citizen_id": 99999,
+            "document_type": "birth_certificate",
+        })
+        assert r.status_code == 404
+
+    def test_different_doc_types_different_estimates(self):
+        r1 = client.post("/documents/request", json={"citizen_id": 1, "document_type": "birth_certificate"})
+        r2 = client.post("/documents/request", json={"citizen_id": 1, "document_type": "criminal_record"})
+        assert r1.json()["estimated_days"] == 3
+        assert r2.json()["estimated_days"] == 7
+
+
+class TestServicesCatalog:
+    """Test GET /services."""
+
+    def test_returns_services(self):
+        r = client.get("/services")
+        assert r.status_code == 200
+        services = r.json()
+        assert len(services) == 5
+
+    def test_services_have_bilingual_names(self):
+        r = client.get("/services")
+        for svc in r.json():
+            assert "name_tr" in svc
+            assert "name_en" in svc
+
+    def test_services_have_auth_flag(self):
+        r = client.get("/services")
+        general = [s for s in r.json() if s["id"] == "general_inquiry"][0]
+        passport = [s for s in r.json() if s["id"] == "passport"][0]
+        assert general["requires_auth"] is False
+        assert passport["requires_auth"] is True
