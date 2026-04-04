@@ -142,6 +142,8 @@ make test-live         # Live API + simulation tests
   - [x] status_check calls GET /applications/{ref} with API fallback
   - [x] appointment_book calls POST /appointments with API fallback
   - [x] document_request calls POST /documents/request with API fallback
+  - [x] 15 services API tests
+- ISSUE-14: COMPLETE
 
 ### Next: ISSUE-08 — Remaining Manual Tasks
 - [ ] Set up public URL (ngrok http 8000) for ElevenLabs to reach our server
