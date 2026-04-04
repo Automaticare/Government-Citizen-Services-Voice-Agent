@@ -144,6 +144,7 @@ make test-live         # Live API + simulation tests
   - [x] document_request calls POST /documents/request with API fallback
   - [x] 15 services API tests
 - ISSUE-14: COMPLETE
+- **ISSUE-15:** Edge Cases — LLM-based handling (no hardcoded keywords), auth/tool/conversation/meta/anger edge cases, platform settings (silence timeout, max duration, patient turn), TTS-friendly SSE streaming
 
 ### Next: ISSUE-08 — Remaining Manual Tasks
 - [ ] Set up public URL (ngrok http 8000) for ElevenLabs to reach our server

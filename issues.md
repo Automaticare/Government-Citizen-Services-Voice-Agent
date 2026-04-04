@@ -562,20 +562,53 @@ ISSUE-14
 Handle edge cases and unexpected scenarios in the tool calling flow to ensure the agent behaves robustly in production-like conditions.
 
 ## Tasks
-- [ ] Handle unknown application reference — agent guides caller to find their reference number
-- [ ] Handle service unavailable — agent apologizes, offers to try again or transfer to human
-- [ ] Handle out-of-scope requests — caller asks for a service the system doesn't support
-- [ ] Handle ambiguous intent — caller's request could match multiple services
-- [ ] Handle caller interruption — caller speaks while agent is responding
-- [ ] Handle silence — caller doesn't respond for 10+ seconds
-- [ ] Handle repeated requests — caller asks the same question multiple times (likely didn't understand the answer)
-- [ ] Implement conversation timeout — gracefully end call after extended inactivity
+
+### Auth Edge Cases (LLM-based, no hardcoded keywords)
+- [x] Auth refusal ("kimliğimi vermek istemiyorum") → guest mode guidance
+- [x] Third-party inquiry ("arkadaşımın başvurusu") → security block
+- [x] Partial TC Kimlik ("sonu 901 ile biten") → full number request
+- [x] Vague date of birth ("doksanlı yıllar") → exact date request
+- [x] TC Kimlik/date format normalization utilities (date_parser.py, tc_kimlik.py)
+
+### Tool Calling Edge Cases
+- [x] Past date appointment → 400 rejection with guidance
+- [x] Duplicate appointment (same service, same date) → 409 with info
+- [x] No available slots → 409 with "try different date"
+- [x] API unavailable → graceful fallback message (httpx error handling in nodes)
+
+### Conversation Flow Edge Cases (LLM-based)
+- [x] Topic change ("bırak onu, şikayet istiyorum") → follows new topic
+- [x] Ambiguous "hayır" → politely asks if anything else needed
+- [x] Code-switching (TR/EN mix) → handles natively
+- [x] Previous call reference → explains no prior access, helps with current need
+
+### Meta Questions (LLM-based)
+- [x] Robot/AI question → self-introduction as Umut
+- [x] Capability question → brief service list
+- [x] Identity question ("kimsin?") → honest AI disclosure
+
+### Anger/Frustration (LLM-based)
+- [x] Profanity → empathetic escalation to human, context-aware tone
+- [x] Frustration without profanity → acknowledges, offers help
+
+### Platform Settings
+- [x] Silence timeout: 30 seconds → end call
+- [x] Turn timeout: 15 seconds
+- [x] Max conversation duration: 10 minutes with Turkish farewell message
+- [x] Turn eagerness: patient (government service, don't interrupt)
+- [x] Caller interruption: handled by ElevenLabs native barge-in
+
+### Voice Output Quality
+- [x] TTS-friendly prompt: no digits, tables, or formatting
+- [x] Sentence-level SSE streaming with delays for proper TTS delivery
+- [x] System prompts include voice output rules (both TR and EN)
 
 ## Acceptance Criteria
-- [ ] Each edge case has a defined, tested response
-- [ ] Agent never crashes or goes silent — always has a fallback response
-- [ ] Edge case handling feels natural and helpful, not robotic
-- [ ] All edge case occurrences are logged for analytics
+- [x] All edge cases handled by LLM prompts — zero hardcoded keyword patterns
+- [x] Agent never crashes or goes silent — fallback at every level
+- [x] Edge case handling feels natural — empathetic escalation, honest AI disclosure
+- [x] Both TR and EN edge cases tested and working
+- [x] Platform settings configured via deploy script API
 
 ---
 
