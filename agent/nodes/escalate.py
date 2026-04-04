@@ -1,53 +1,75 @@
 """
 Escalation node.
 
-Returns an AIMessage with transfer confirmation. In production with
-Twilio/SIP, this would include a transfer_to_number system tool call.
-In demo mode, returns text-only to avoid ElevenLabs retry loops
-(platform retries when transfer can't execute without real phone line).
+Generates an empathetic transfer message based on conversation context.
+Uses LLM to adapt tone — frustrated caller gets acknowledgment,
+normal request gets standard transfer message.
 
-To enable real transfer, set ENABLE_PHONE_TRANSFER=true in .env and
-configure a real operator number.
+In production with Twilio (ENABLE_PHONE_TRANSFER=true), also returns
+a transfer_to_number system tool call.
 """
 
 import json
 import os
 import uuid
 
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, SystemMessage, HumanMessage
+from langchain_openai import ChatOpenAI
+
 from agent.state import AgentState
 from agent.logging_config import get_logger
 from agent.nodes.utils import mark_completed
 
 logger = get_logger(__name__)
 
-# Demo transfer number — replace with real operator line in production
 _TRANSFER_NUMBER = "+905001234567"
 _ENABLE_TRANSFER = os.getenv("ENABLE_PHONE_TRANSFER", "false").lower() == "true"
 
+_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
+
+ESCALATE_PROMPT = """You are a government citizen services assistant named Umut.
+The caller needs to be transferred to a human operator.
+
+Based on the caller's last message, generate a SHORT (1-2 sentences) transfer message.
+Your response will be read aloud by text-to-speech.
+
+Rules:
+- If the caller is frustrated or angry: acknowledge their frustration first, then transfer
+  Example: "Yasadiginiz sorunu anliyorum ve ozur dilerim. Sizi hemen bir yetkiliyle gorusturecegim."
+- If the caller simply requested an operator: standard polite transfer
+  Example: "Sizi bir operatore bagliyorum, lutfen bir an bekleyin."
+- Never use formatting, bullet points, or numbers
+- Respond in {language_name}
+- Keep it warm and human — this person is about to talk to a real person"""
+
 
 def escalate(state: AgentState) -> dict:
-    """Escalate to human operator.
-
-    In production (ENABLE_PHONE_TRANSFER=true): returns transfer_to_number
-    tool call for ElevenLabs to execute.
-    In demo: returns text-only confirmation (avoids retry loop).
-    """
+    """Escalate to human operator with context-aware empathetic message."""
     language = state.get("language", "tr")
+    messages = state.get("messages", [])
+    language_name = "English" if language == "en" else "Turkish"
 
-    if language == "en":
-        reason = "Citizen requested assistance from a human operator"
-        client_message = ("I'm transferring you to a human operator who can assist you further. "
-                          "Please hold for a moment.")
-        agent_message = "Citizen requesting human assistance via voice agent."
-    else:
-        reason = "Vatandas operator yardimi talep etti"
-        client_message = ("Sizi daha detayli yardimci olabilecek bir operatore bagliyorum. "
-                          "Lutfen bir an bekleyin.")
-        agent_message = "Vatandas sesli asistan uzerinden operator yardimi talep ediyor."
+    # Get last user message for context
+    user_msg = ""
+    for msg in reversed(messages):
+        if isinstance(msg, HumanMessage) or getattr(msg, "type", "") == "human":
+            user_msg = msg.content
+            break
+
+    # LLM generates context-aware transfer message
+    response = _llm.invoke([
+        SystemMessage(content=ESCALATE_PROMPT.format(language_name=language_name)),
+        HumanMessage(content=user_msg or "Operator ile gorusmek istiyorum"),
+    ])
+    client_message = response.content
+
+    logger.info(f"Escalation triggered | transfer_enabled={_ENABLE_TRANSFER}")
 
     if _ENABLE_TRANSFER:
-        logger.info("Escalation triggered — returning transfer_to_number tool call")
+        if language == "en":
+            agent_message = "Citizen requesting human assistance via voice agent."
+        else:
+            agent_message = "Vatandas sesli asistan uzerinden operator yardimi talep ediyor."
 
         tool_call = {
             "id": f"call_{uuid.uuid4().hex[:12]}",
@@ -55,29 +77,19 @@ def escalate(state: AgentState) -> dict:
             "function": {
                 "name": "transfer_to_number",
                 "arguments": json.dumps({
-                    "reason": reason,
+                    "reason": "Citizen escalation",
                     "transfer_number": _TRANSFER_NUMBER,
                     "client_message": client_message,
                     "agent_message": agent_message,
                 }),
             },
         }
-
         msg = AIMessage(
             content=client_message,
             additional_kwargs={"tool_calls": [tool_call]},
         )
     else:
-        logger.info("Escalation triggered — demo mode (text-only, no phone transfer)")
-        if language == "en":
-            demo_msg = ("I would transfer you to a human operator now. "
-                        "In production, this triggers a phone transfer via Twilio/SIP. "
-                        "Is there anything else I can help you with?")
-        else:
-            demo_msg = ("Sizi bir operatore baglamam gerekiyor. "
-                        "Gercek ortamda bu noktada telefon transferi gerceklesir. "
-                        "Baska yardimci olabilecegim bir konu var mi?")
-        msg = AIMessage(content=demo_msg)
+        msg = AIMessage(content=client_message)
 
     return {
         "messages": [msg],
