@@ -39,9 +39,11 @@ def document_request(state: AgentState) -> dict:
     language = state.get("language", "tr")
 
     if not profile:
-        msg = ("I need to verify your identity before processing a document request."
+        msg = ("I can help you with your document request. First, I need to verify your identity. "
+               "Could you please tell me the last four digits of your TC Kimlik number?"
                if language == "en" else
-               "Belge talebi icin kimlik dogrulamasi gerekiyor.")
+               "Belge talebiniz icin yardimci olabilirim. Oncelikle kimliginizi dogrulamam gerekiyor. "
+               "TC Kimlik numaranizin son dort hanesini soyler misiniz?")
         return {
             "messages": [AIMessage(content=msg)],
             "completed_intents": mark_completed(state, "document_request"),

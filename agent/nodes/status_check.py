@@ -52,9 +52,11 @@ def status_check(state: AgentState) -> dict:
     language = state.get("language", "tr")
 
     if not profile:
-        msg = ("I need to verify your identity before checking your application status."
+        msg = ("I can check your application status. First, I need to verify your identity. "
+               "Could you please tell me the last four digits of your TC Kimlik number?"
                if language == "en" else
-               "Basvuru durumunuzu kontrol etmek icin kimlik dogrulamasi gerekiyor.")
+               "Basvuru durumunuzu kontrol edebilirim. Oncelikle kimliginizi dogrulamam gerekiyor. "
+               "TC Kimlik numaranizin son dort hanesini soyler misiniz?")
         return {
             "messages": [AIMessage(content=msg)],
             "completed_intents": mark_completed(state, "status_check"),
