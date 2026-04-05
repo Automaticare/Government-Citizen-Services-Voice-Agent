@@ -11,7 +11,7 @@ Government Citizen Services Voice Agent — an AI-powered multilingual voice age
 - **API Bridge:** FastAPI (Custom LLM endpoint for ElevenLabs)
 - **RAG:** Pinecone (vector DB) + OpenAI embeddings
 - **Database:** SQLite (demo) / PostgreSQL (production) via SQLAlchemy ORM
-- **Dashboard:** Streamlit
+- **Dashboard:** Streamlit (planned)
 - **Language:** Python 3.11+
 
 ## Architecture
@@ -146,7 +146,7 @@ make test-live         # Live API + simulation tests
 - **ISSUE-08:** Connect LangGraph to ElevenLabs Voice — transfer_to_number system tool call, buffer words, circuit breaker (Level 0/1/2 degradation), Custom LLM deploy config, backup_llm_config, conversation.py removed
 - **ISSUE-09:** Tool Schemas — 5 business tools (Pydantic validation + OpenAI format registry), 3 system tools (language_detection + end_call deployed, transfer_to_number deferred to Twilio), 22 tests
 - **ISSUE-10:** Knowledge Base — 40 documents (5 categories × 4 doc types × 2 languages), manifest.json
-- **ISSUE-11:** Embedding Pipeline — chunker (253 chunks from 40 docs), OpenAI text-embedding-3-small, Pinecone serverless index, 5/5 validation queries passing
+- **ISSUE-11:** Embedding Pipeline — chunker (219 chunks from 40 docs, min 50 chars), OpenAI text-embedding-3-small, Pinecone serverless index, 5/5 validation queries passing
 - **ISSUE-12:** RAG Integration — faq_answer grounded in Pinecone (no hallucination), status_check chains to RAG for required docs + appeal rights
 - **ISSUE-13:** Mock Government API — Appointment and DocumentRequest DB models, 5 API endpoints, seed data (23 citizens, 5 appointments, 3 doc requests)
   - **Debt:** Application table needs 1:N separation from Citizen, missing cancel/status endpoints

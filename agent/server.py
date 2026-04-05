@@ -115,6 +115,8 @@ app.include_router(handoff_router)
 app.include_router(services_router)
 
 # Ensure DB tables exist on startup
+# Note: using on_event for simplicity since app already defined.
+# Main api/server.py uses lifespan pattern.
 @app.on_event("startup")
 def _init_gov_db():
     init_db()
