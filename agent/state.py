@@ -20,6 +20,7 @@ Intent = Literal[
     "fee_inquiry",
     "complaint",
     "escalate",
+    "auth_collect",
     "unknown",
 ]
 

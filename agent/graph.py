@@ -27,6 +27,7 @@ from agent.nodes.document_request import document_request
 from agent.nodes.faq_answer import faq_answer
 from agent.nodes.complaint import complaint
 from agent.nodes.escalate import escalate
+from agent.nodes.auth_collect import auth_collect
 
 
 def route_by_intent(state: AgentState) -> str:
@@ -41,6 +42,7 @@ def route_by_intent(state: AgentState) -> str:
         "fee_inquiry": "faq_answer",  # Fee inquiries handled via RAG
         "complaint": "complaint",
         "escalate": "escalate",
+        "auth_collect": "auth_collect",
         "unknown": "faq_answer",  # Fallback: try to answer from knowledge base
     }
 
@@ -81,6 +83,7 @@ def build_graph(checkpointer=None):
     builder.add_node("faq_answer", faq_answer)
     builder.add_node("complaint", complaint)
     builder.add_node("escalate", escalate)
+    builder.add_node("auth_collect", auth_collect)
 
     # --- Add edges ---
     builder.add_edge(START, "intent_classify")
@@ -88,7 +91,7 @@ def build_graph(checkpointer=None):
     builder.add_conditional_edges("service_router", route_by_intent)
 
     for node in ["status_check", "appointment_book", "document_request",
-                 "faq_answer", "complaint", "escalate"]:
+                 "faq_answer", "complaint", "escalate", "auth_collect"]:
         builder.add_conditional_edges(node, check_pending_intents)
 
     return builder.compile(checkpointer=checkpointer)
