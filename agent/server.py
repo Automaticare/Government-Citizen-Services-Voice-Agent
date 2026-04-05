@@ -263,6 +263,17 @@ async def chat_completions(request: ChatCompletionRequest):
     # system tool — we don't detect or trigger switches ourselves.
 
     logger.info(f"Custom LLM request | conv={conversation_id} | messages={len(request.messages)} | lang={language}")
+    if request.elevenlabs_extra_body:
+        logger.info(f"Extra body: {request.elevenlabs_extra_body}")
+    # Log system prompt and extract dynamic variables
+    system_prompt_content = ""
+    for msg in request.messages[:2]:
+        if msg.role == "system":
+            system_prompt_content = msg.content or ""
+            # Write full system prompt to file for inspection
+            with open("data/last_system_prompt.txt", "w", encoding="utf-8") as f:
+                f.write(system_prompt_content)
+            logger.info(f"System prompt length: {len(system_prompt_content)} (saved to data/last_system_prompt.txt)")
 
     # Convert request messages to LangGraph format
     lc_messages = []
@@ -274,6 +285,45 @@ async def chat_completions(request: ChatCompletionRequest):
             lc_messages.append(AIMessage(content=content))
         elif msg.role == "system":
             lc_messages.append(SystemMessage(content=content))
+
+    # Detect post-auth: if many messages (>8) and last user message is
+    # an auth artifact (single letter, short number), find the user's
+    # ORIGINAL request from the beginning of conversation and use that.
+    if lc_messages and len(request.messages) > 8:
+        user_msgs = [m for m in lc_messages if isinstance(m, HumanMessage)]
+        if user_msgs:
+            last_content = user_msgs[-1].content.strip()
+            is_auth_artifact = len(last_content) <= 4
+
+            if is_auth_artifact:
+                # Find first real user request (not auth data)
+                original_request = None
+                for m in user_msgs:
+                    content = m.content.strip()
+                    if len(content) > 10:  # Real request, not "0146" or "M"
+                        original_request = content
+                        break
+
+                if original_request:
+                    logger.info(f"Post-auth detected — using original request: '{original_request[:50]}'")
+                    lc_messages = [HumanMessage(content=original_request)]
+
+                    # Extract citizen profile from system prompt dynamic variables
+                    # ElevenLabs injects {{first_name}} etc. into system prompt
+                    import re
+                    sp = system_prompt_content
+                    name_match = re.search(r'Vatandasin adi:\s*(\w+)', sp)
+                    ref_match = re.search(r'Basvuru numarasi:\s*([\w-]+)', sp)
+                    status_match = re.search(r'Basvuru durumu:\s*(\w+)', sp)
+
+                    if name_match:
+                        auth_status = "authenticated"
+                        citizen_profile = {
+                            "first_name": name_match.group(1),
+                            "application_ref": ref_match.group(1) if ref_match else "",
+                            "application_status": status_match.group(1) if status_match else "",
+                        }
+                        logger.info(f"Post-auth citizen profile from system prompt: {citizen_profile}")
 
     # ElevenLabs sends full message history with every request (stateless).
     # Pass all messages to the graph — no checkpointer needed.

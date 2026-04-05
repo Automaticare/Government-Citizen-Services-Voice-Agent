@@ -56,37 +56,18 @@ def build_agent_config(version: str, custom_llm_url: str | None = None) -> dict:
     from agent.tools.schemas import get_system_tool_configs
     system_tools = get_system_tool_configs()
 
-    # Prompt config — common fields
+    # Base agent uses native LLM (GPT-4o) — workflow subagents inherit this.
+    # Custom LLM (LangGraph) is only used in the Authenticated Service node
+    # via workflow override, NOT as the base agent LLM.
+    # This is critical: if base agent is Custom LLM, workflow subagents
+    # bypass the auth flow and go straight to LangGraph.
     prompt_config = {
         "prompt": system_prompt_tr,
         "llm": "gpt-4o",
         "temperature": 0.7,
-        "max_tokens": 1024,
+        "max_tokens": 5000,
         "tools": system_tools,
     }
-
-    # Custom LLM: route all LLM calls to our LangGraph proxy
-    if custom_llm_url:
-        # ElevenLabs requires llm="custom-llm" when custom_llm is set
-        prompt_config["llm"] = "custom-llm"
-
-        # ElevenLabs auto-appends /v1/chat/completions — only pass base URL
-        url = custom_llm_url.rstrip("/")
-        url = url.removesuffix("/v1/chat/completions").removesuffix("/v1")
-
-        prompt_config["custom_llm"] = {
-            "url": url,
-            # ngrok free plan shows an HTML interstitial page on first request.
-            # This header bypasses it so ElevenLabs gets JSON, not HTML.
-            "request_headers": {
-                "ngrok-skip-browser-warning": "true",
-            },
-        }
-        # Level 2 graceful degradation: if Custom LLM is unreachable,
-        # ElevenLabs falls back to its default native LLM
-        prompt_config["backup_llm_config"] = {
-            "preference": "default",
-        }
 
     # Timeout message when max duration is reached
     MAX_DURATION_MSG_TR = ("Gorusme suresi doldu. Baska bir konuda yardima ihtiyaciniz olursa "
@@ -144,11 +125,21 @@ def build_auth_workflow(custom_llm_url: str | None = None, gov_api_url: str = "h
     """
     system_prompt_auth = (
         "Sen Umut, Vatandas Hizmetleri sesli asistanisin. "
-        "Vatandasin kimligini dogrulamak icin TC Kimlik numarasini ve dogum tarihini topla. "
-        "Her bilgiyi TEK TEK sor, hepsini ayni anda isteme. "
-        "Oncelikle TC Kimlik numarasini sor, sonra dogum tarihini sor. "
-        "ASLA TC Kimlik numarasini geri tekrar etme. "
-        "Yanıtların sesli okunacak — rakam kullanma, sayi yazıyla yaz."
+        "Vatandasin kimligini dogrulamak icin uc bilgi toplayacaksin. "
+        "Ilk olarak vatandasa soyle: 'Kimliginizi dogrulamam icin size uc kisa soru soracagim.' "
+        "Sonra her bilgiyi TEK TEK sor ve her cevaptan sonra DOGRULAMA yap. "
+        "Sirayla: "
+        "1. 'TC Kimlik numaranizin son dort hanesini soyler misiniz?' "
+        "   Cevabi alinca tekrar et: 'Son dort hane sifir bir dort alti, dogru mu?' "
+        "   Evet derse sonraki soruya gec. Hayir derse tekrar sor. "
+        "2. 'Dogum tarihinizi gun, ay ve yil olarak soyler misiniz?' "
+        "   Cevabi alinca tekrar et: 'On bes Mart bin dokuz yuz doksan, dogru mu?' "
+        "   Evet derse sonraki soruya gec. Hayir derse tekrar sor. "
+        "3. 'Baba adinizin ilk harfini soyler misiniz?' "
+        "   Cevabi alinca tekrar et: 'Baba adinizin ilk harfi em, dogru mu?' "
+        "   Evet derse dogrulama tamamlandi. Hayir derse tekrar sor. "
+        "ONEMLI: Rakamlari ASLA rakam olarak soyleme. Her zaman yaziyla yaz. "
+        "Ornek: 'sifir bir dort alti' de, '0146' deme."
     )
 
     system_prompt_authenticated = (
@@ -324,20 +315,14 @@ def deploy(version: str | None = None, dry_run: bool = False) -> None:
 
     client = ElevenLabs(api_key=config.api_key)
 
-    # Build workflow for deterministic auth gating
-    gov_api_url = f"http://localhost:8081"  # Government API
-    workflow = build_auth_workflow(
-        custom_llm_url=custom_llm_url,
-        gov_api_url=gov_api_url,
-    )
-
-    logger.info(f"Workflow: {len(workflow['nodes'])} nodes, {len(workflow['edges'])} edges")
+    # Workflow is configured via dashboard (tool node requires dashboard-based
+    # webhook configuration that deploy script can't replicate without tool_id).
+    # Deploy script only updates conversation_config — workflow is preserved.
 
     agent = client.conversational_ai.agents.update(
         agent_id=config.agent_id,
         name=payload["name"],
         conversation_config=payload["conversation_config"],
-        workflow=workflow,
     )
 
     logger.info(f"Deployed successfully. Agent ID: {agent.agent_id}")
