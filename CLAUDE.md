@@ -24,9 +24,18 @@ ElevenLabs (platform-native):          LangGraph (custom intelligence):
                                        ├─ Conversation state (MemorySaver)
                                        └─ Prompt versioning
 
-Two FastAPI servers:
-├─ api/server.py    (port 8001) — Government backend: auth, handoff, guest FAQ, citizen DB
-└─ agent/server.py  (port 8000) — Custom LLM proxy: ElevenLabs → LangGraph → SSE stream
+ElevenLabs Workflow (auth):
+  Start → Collect Identity (GPT-4o) → Dispatch tool (webhook auth)
+    → Success: Authenticated Service (Custom LLM / LangGraph)
+    → Failure: Auth Retry (GPT-4o) → back to Collect Identity
+
+Single FastAPI server (agent/server.py, port 8080):
+├─ /v1/chat/completions — Custom LLM proxy (ElevenLabs → LangGraph → SSE)
+├─ /auth/*              — Government auth endpoints (mounted from api/)
+├─ /appointments/*      — Appointment endpoints (mounted from api/)
+├─ /documents/*         — Document request endpoints (mounted from api/)
+├─ /services            — Service catalog (mounted from api/)
+└─ /health              — Health check + circuit breaker status
 ```
 
 ## Project Structure
@@ -36,17 +45,18 @@ Two FastAPI servers:
   /prompts          — Versioned system prompts (v1.0/system_prompt_tr.md, _en.md)
   /tools            — Validators (tc_kimlik.py, app_ref.py)
   config.py         — AgentConfig dataclass (incl. custom_llm_url)
-  deploy.py         — Programmatic agent deploy to ElevenLabs (Custom LLM + backup LLM)
+  deploy.py         — Programmatic agent deploy to ElevenLabs (conversation config, workflow preserved)
   graph.py          — LangGraph StateGraph definition
   logging_config.py — PII redaction logging
-  server.py         — Custom LLM proxy (/v1/chat/completions SSE, circuit breaker, buffer words)
+  server.py         — Custom LLM proxy + mounted gov API (/v1/chat/completions SSE, circuit breaker)
   state.py          — AgentState TypedDict
-/api                — Government backend
-  auth.py           — POST /auth/verify/tc-kimlik, /auth/verify/app-ref
+/api                — Government backend (mounted into agent/server.py)
+  auth.py           — POST /auth/verify/tc-kimlik, /auth/verify/app-ref, /auth/verify/webhook
   handoff.py        — POST /handoff, POST /guest/info
-  models.py         — SQLAlchemy models (Citizen, AuthAuditLog)
-  seed_data.py      — 23 citizen records seeder
-  server.py         — FastAPI app (port 8001)
+  models.py         — SQLAlchemy models (Citizen, AuthAuditLog, Appointment, DocumentRequest)
+  seed_data.py      — 23 citizen records + 5 appointments + 3 doc requests seeder
+  services.py       — GET /applications/{ref}, POST /appointments, POST /documents/request, GET /services
+  server.py         — Standalone FastAPI app (for independent testing)
 /dashboard          — Streamlit analytics app (planned)
 /data               — citizens.db (SQLite, gitignored)
 /docs               — auth_flow.md, conversation_flow.md
@@ -62,8 +72,10 @@ Two FastAPI servers:
 - **Single multilingual agent** with language_presets — one endpoint, auto language detection
 - **KVKK compliance** — PII redaction in all logs, TC Kimlik stored as SHA-256 hash, audit trail with no raw PII
 - **Prompt versioning** tracked per conversation for data-driven optimization
-- **MemorySaver checkpointer** keyed by conversation_id for state persistence across turns
+- **Stateless message passing** — ElevenLabs sends full history each turn, no server-side checkpointer needed
 - **Graceful degradation** — Level 0: full LangGraph, Level 1: direct OpenAI (circuit breaker after 3 failures, 60s cooldown), Level 2: ElevenLabs native fallback (backup_llm_config)
+- **Sentence-level SSE streaming** — responses split by sentence with delays for TTS processing
+- **STT-friendly auth** — last 4 digits + DOB + father initial instead of full 11-digit TC Kimlik
 
 ## README Policy
 - README contains the FULL target project structure — not just what exists today
@@ -102,15 +114,17 @@ cp .env.example .env
 # 3. Seed the citizen database
 python -m api.seed_data
 
-# 4. Start servers (two separate terminals)
-uvicorn api.server:app --reload --port 8001    # Government API
-uvicorn agent.server:app --reload --port 8000  # Custom LLM proxy
+# 4. Start server (single server — gov API mounted into agent server)
+python -m uvicorn agent.server:app --reload --port 8080
 
-# 5. Deploy agent to ElevenLabs
-python -m agent.deploy           # Deploy multilingual agent
+# 5. Start ngrok tunnel (for ElevenLabs to reach our server)
+ngrok http 8080
+
+# 6. Deploy agent to ElevenLabs (conversation config only — workflow preserved)
+$env:CUSTOM_LLM_URL="<ngrok-url>"; python -m agent.deploy
 python -m agent.deploy --dry-run # Preview without deploying
 
-# 6. Run tests
+# 7. Run tests
 make test              # Unit tests (no API keys needed for most)
 make test-live         # Live API + simulation tests
 ```

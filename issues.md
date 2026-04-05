@@ -195,6 +195,43 @@ Implement the caller identity verification logic designed in ISSUE-04. The agent
 - Voice number recognition edge cases ("bir iki üç" vs "123") will be handled in ISSUE-07/08 when voice integration is connected
 - DB: SQLite for demo (zero setup), SQLAlchemy ORM for production-readiness (PostgreSQL swap = 1 line change)
 - KVKK reference: https://www.kvkk.gov.tr — Turkey's Personal Data Protection Law (Law No. 6698)
+
+---
+
+# ISSUE-05B: Auth Workflow Integration (ElevenLabs Workflows + Custom LLM)
+
+## Module
+Authentication Flow
+
+## Priority
+P0
+
+## Dependencies
+ISSUE-04, ISSUE-05, ISSUE-08
+
+## Description
+Integrate ElevenLabs Workflows with Custom LLM for deterministic auth gating. Collect Identity (native GPT-4o) collects credentials, dispatch tool calls auth webhook, Authenticated Service (Custom LLM / LangGraph) handles post-auth services.
+
+## Tasks
+- [x] Add father_name to Citizen model and seed data
+- [x] Create STT-friendly auth webhook (POST /auth/verify/webhook) — last 4 digits + DOB + father initial
+- [x] Deploy ElevenLabs Workflow via API (start → collect → dispatch → success/failure)
+- [x] Configure dispatch tool webhook in dashboard (URL, body params, assignments)
+- [x] Set base agent LLM to Custom LLM, override Collect Identity + Auth Retry to GPT-4o
+- [x] Parse dynamic variables (first_name, application_ref, application_status) from system prompt in Custom LLM proxy
+- [x] Post-auth detection — identify auth artifacts, extract original user request
+- [x] Auth failure returns HTTP 401 (not 200 with is_error) for correct workflow routing
+- [x] Generic error messages — no field-specific information leakage
+- [x] Mount government API routers into agent server (single port, single ngrok tunnel)
+
+## Acceptance Criteria
+- [x] Auth flow e2e: collect 3 fields → webhook → success → LangGraph responds with status
+- [x] Auth failure e2e: wrong credentials → 401 → Auth Retry → offer to try again
+- [x] Dynamic variables parsed from system prompt → citizen_profile available in LangGraph
+- [x] Single server port (8080) — Custom LLM + gov API on same ngrok tunnel
+
+---
+
 # ISSUE-06: Authentication Failure Handling & Human Handoff
 
 ## Module
