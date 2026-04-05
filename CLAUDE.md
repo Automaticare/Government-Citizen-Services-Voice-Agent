@@ -127,38 +127,32 @@ make test-live         # Live API + simulation tests
 - **ISSUE-07:** LangGraph Workflow — 8-node graph, LLM intent classification, deterministic tool chaining, Custom LLM proxy with SSE streaming, MemorySaver checkpointer, 24 tests
 - **ISSUE-08:** Connect LangGraph to ElevenLabs Voice — transfer_to_number system tool call, buffer words, circuit breaker (Level 0/1/2 degradation), Custom LLM deploy config, backup_llm_config, conversation.py removed
 - **ISSUE-09:** Tool Schemas — 5 business tools (Pydantic validation + OpenAI format registry), 3 system tools (language_detection + end_call deployed, transfer_to_number deferred to Twilio), 22 tests
-
 - **ISSUE-10:** Knowledge Base — 40 documents (5 categories × 4 doc types × 2 languages), manifest.json
-
 - **ISSUE-11:** Embedding Pipeline — chunker (253 chunks from 40 docs), OpenAI text-embedding-3-small, Pinecone serverless index, 5/5 validation queries passing
-
 - **ISSUE-12:** RAG Integration — faq_answer grounded in Pinecone (no hallucination), status_check chains to RAG for required docs + appeal rights
-- **ISSUE-13:** Mock Government API — IN PROGRESS
-  - [x] Appointment and DocumentRequest DB models + seed data (5 appointments, 3 doc requests)
-  - [x] API endpoints: GET /applications/{ref}, POST /appointments, GET /appointments/{citizen_id}, POST /documents/request, GET /services
-- ISSUE-13: COMPLETE
-- **ISSUE-14:** Tool Calling — IN PROGRESS
-  - [x] citizen_id added to auth response profile
-  - [x] status_check calls GET /applications/{ref} with API fallback
-  - [x] appointment_book calls POST /appointments with API fallback
-  - [x] document_request calls POST /documents/request with API fallback
-  - [x] 15 services API tests
-- ISSUE-14: COMPLETE
-- **ISSUE-15:** Edge Cases — LLM-based handling (no hardcoded keywords), auth/tool/conversation/meta/anger edge cases, platform settings (silence timeout, max duration, patient turn), TTS-friendly SSE streaming
+- **ISSUE-13:** Mock Government API — Appointment and DocumentRequest DB models, 5 API endpoints, seed data (23 citizens, 5 appointments, 3 doc requests)
+  - **Debt:** Application table needs 1:N separation from Citizen, missing cancel/status endpoints
+- **ISSUE-14:** Tool Calling — Nodes connected to real API via httpx, tool chaining (status → RAG), 15 services tests
+  - **Debt:** Missing appointment_list, appointment_cancel, document_status nodes
+- **ISSUE-15:** Edge Cases — LLM-based handling (no hardcoded keywords), platform settings, TTS-friendly SSE streaming
 
-### Next: ISSUE-08 — Remaining Manual Tasks
-- [ ] Set up public URL (ngrok http 8000) for ElevenLabs to reach our server
-- [ ] Deploy agent with Custom LLM endpoint (`CUSTOM_LLM_URL=<ngrok-url> python -m agent.deploy`)
-- [ ] End-to-end voice test
-- [ ] Latency measurement
+### In Progress
+- **Auth Workflow:** ElevenLabs Workflow deployed via API (6 nodes, 6 edges), webhook auth endpoint ready (`POST /auth/verify/webhook`)
+  - **Blocker:** dispatch tool node needs webhook tool configured — currently `tools: []` is empty
+  - Once fixed: auth e2e test → tool chaining e2e test → full demo flow
+
+### What Works Now (e2e tested via dashboard):
+- ✅ FAQ/RAG questions — "Çalışma saatleri?", "Pasaport belgeleri?", "Ehliyet ücreti?"
+- ✅ Edge cases — auth refusal, third-party block, robot question, anger → escalate
+- ✅ Complaint recording
+- ✅ Operator transfer (demo mode)
+- ❌ Auth flow — workflow deployed but dispatch tool webhook not connected
+- ❌ Authenticated services (status check, appointment, document) — blocked by auth
+- ❌ Tool chaining live test — blocked by auth
 
 ### Remaining Issues (not started)
-- ISSUE-09: Define Agent Tools & Function Schemas
-- ISSUE-10-12: RAG Pipeline (Pinecone)
-  ↓
-- **ISSUE-15B: Twilio Phone Integration** (after ISSUE-15, before ISSUE-16)
-- ISSUE-13-15: Tool Calling & Integrations (Mock Gov API)
-- ISSUE-16-18: Conversation Management
-- ISSUE-19-22: Analytics Dashboard (Streamlit)
-- ISSUE-23-25: Testing & Quality
-- ISSUE-26-28: Documentation & Demo
+- **ISSUE-15B:** Twilio Phone Integration (after auth workflow works)
+- **ISSUE-16-18:** Conversation Management
+- **ISSUE-19-22:** Analytics Dashboard (Streamlit)
+- **ISSUE-23-25:** Testing & Quality
+- **ISSUE-26-28:** Documentation & Demo
