@@ -102,6 +102,23 @@ app = FastAPI(
     description="LangGraph agent exposed as OpenAI-compatible Custom LLM for ElevenLabs.",
 )
 
+# Mount government API routers on the same server.
+# Single port = single ngrok tunnel = ElevenLabs can reach both
+# Custom LLM (/v1/chat/completions) and Government API (/auth, /appointments, etc.)
+from api.auth import router as auth_router
+from api.handoff import router as handoff_router
+from api.services import router as services_router
+from api.models import init_db
+
+app.include_router(auth_router)
+app.include_router(handoff_router)
+app.include_router(services_router)
+
+# Ensure DB tables exist on startup
+@app.on_event("startup")
+def _init_gov_db():
+    init_db()
+
 
 # --- Request model (OpenAI Chat Completions format) ---
 

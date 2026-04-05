@@ -164,7 +164,12 @@ def build_auth_workflow(custom_llm_url: str | None = None, gov_api_url: str = "h
         "Eger vatandas artik denemek istemiyorsa, onu bir operatore bagla."
     )
 
-    auth_webhook_url = f"{gov_api_url}/auth/verify/webhook"
+    # Webhook URL — same server as Custom LLM (single port, single ngrok tunnel)
+    if custom_llm_url:
+        base = custom_llm_url.rstrip("/")
+        auth_webhook_url = f"{base}/auth/verify/webhook"
+    else:
+        auth_webhook_url = f"{gov_api_url}/auth/verify/webhook"
 
     workflow = {
         "nodes": {
