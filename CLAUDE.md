@@ -136,22 +136,33 @@ make test-live         # Live API + simulation tests
   - **Debt:** Missing appointment_list, appointment_cancel, document_status nodes
 - **ISSUE-15:** Edge Cases — LLM-based handling (no hardcoded keywords), platform settings, TTS-friendly SSE streaming
 
-### In Progress
-- **Auth Workflow:** ElevenLabs Workflow deployed via API (6 nodes, 6 edges), webhook auth endpoint ready (`POST /auth/verify/webhook`)
-  - **Blocker:** dispatch tool node needs webhook tool configured — currently `tools: []` is empty
-  - Once fixed: auth e2e test → tool chaining e2e test → full demo flow
+### Auth Workflow (ISSUE-05B) — COMPLETE
+- ElevenLabs Workflow: Start → Collect Identity (GPT-4o) → Dispatch tool (webhook) → Success: Authenticated Service (Custom LLM/LangGraph) / Failure: Auth Retry (GPT-4o) → back to Collect Identity
+- Auth method: TC Kimlik last 4 digits + DOB + father's name initial (STT-friendly)
+- Webhook: POST /auth/verify/webhook — returns 200 on success, 401 on failure (generic error message, no field-specific info leak)
+- Dynamic variables: first_name, application_ref, application_status injected into system prompt by ElevenLabs, parsed by Custom LLM proxy
+- Post-auth detection: server.py identifies auth artifacts in message history, extracts original user request
+- Workflow configured via dashboard (tool node requires dashboard webhook config), deploy script preserves workflow
 
 ### What Works Now (e2e tested via dashboard):
-- ✅ FAQ/RAG questions — "Çalışma saatleri?", "Pasaport belgeleri?", "Ehliyet ücreti?"
+- ✅ FAQ/RAG — "Çalışma saatleri?", "Pasaport belgeleri?", "Ehliyet ücreti?" (TTS-friendly, no digits)
+- ✅ Auth flow — collect identity → dispatch tool → success/failure routing
+- ✅ Auth + status check — "Başvurumun durumunu öğrenmek istiyorum" → auth → "Ahmet, başvurunuz inceleme aşamasında"
+- ✅ Auth failure — wrong credentials → Auth Retry → "tekrar denemek ister misiniz?"
 - ✅ Edge cases — auth refusal, third-party block, robot question, anger → escalate
 - ✅ Complaint recording
 - ✅ Operator transfer (demo mode)
-- ❌ Auth flow — workflow deployed but dispatch tool webhook not connected
-- ❌ Authenticated services (status check, appointment, document) — blocked by auth
-- ❌ Tool chaining live test — blocked by auth
+- ⚠️ Auth + appointment/document — not yet e2e tested but code ready
+- ⚠️ Tool chaining (status → RAG for docs) — works in terminal, not yet e2e tested with auth
+
+### Technical Debt
+- Application table 1:1 with Citizen (should be 1:N) — ISSUE-13 debt
+- Missing appointment_list, appointment_cancel, document_status nodes — ISSUE-14 debt
+- Buffer words after auth ("kontrol ediyorum") — causes workflow edge issues, deferred
+- Server.py has debug logging (last_system_prompt.txt) — remove before production
 
 ### Remaining Issues (not started)
-- **ISSUE-15B:** Twilio Phone Integration (after auth workflow works)
+- **ISSUE-15B:** Twilio Phone Integration
 - **ISSUE-16-18:** Conversation Management
 - **ISSUE-19-22:** Analytics Dashboard (Streamlit)
 - **ISSUE-23-25:** Testing & Quality
