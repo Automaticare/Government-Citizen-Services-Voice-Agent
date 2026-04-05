@@ -41,6 +41,7 @@ class Citizen(Base):
     tc_kimlik_hash = Column(String, nullable=False, unique=True, index=True)
     first_name = Column(String, nullable=False)
     last_name = Column(String, nullable=False)
+    father_name = Column(String, nullable=False, default="")
     date_of_birth = Column(String, nullable=False)  # DD/MM/YYYY
     application_ref = Column(String, unique=True, index=True)
     application_status = Column(String, nullable=False, default="pending")

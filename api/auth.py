@@ -44,11 +44,13 @@ class AuthRequestAppRef(BaseModel):
 class AuthWebhookRequest(BaseModel):
     """Webhook-compatible auth request for ElevenLabs dispatch tool.
 
-    Parameters are extracted by LLM from conversation — no session_id
-    or attempt_number needed (ElevenLabs manages retries via workflow edges).
+    Uses last 4 digits of TC Kimlik + date of birth + father's first
+    letter — STT-friendly (no 11-digit number over voice).
+    Parameters extracted by LLM from conversation.
     """
-    tc_kimlik: str
+    tc_kimlik_last4: str
     date_of_birth: str
+    father_initial: str
 
 
 class AuthResponse(BaseModel):
@@ -178,11 +180,8 @@ def verify_webhook(
 ):
     """Webhook-compatible auth for ElevenLabs Workflow dispatch tool.
 
-    Called by ElevenLabs as a webhook tool — LLM extracts tc_kimlik
-    and date_of_birth from conversation, ElevenLabs sends them here.
-
-    Response includes citizen_profile which ElevenLabs stores as
-    dynamic variables via tool assignment configuration.
+    Uses last 4 digits of TC Kimlik + date of birth + father's name
+    first letter. STT-friendly — no 11-digit number over voice.
 
     Returns is_error=false on success (dispatch tool routes to
     authenticated subagent), is_error=true on failure (routes to
@@ -190,7 +189,15 @@ def verify_webhook(
     """
     logger.info("Auth webhook attempt")
 
-    # Normalize date format — LLM may send various formats
+    # Validate last 4 digits
+    last4 = "".join(c for c in request.tc_kimlik_last4 if c.isdigit())
+    if len(last4) != 4:
+        return AuthResponse(
+            is_error=True,
+            message="TC Kimlik son dort hanesi 4 rakam olmali.",
+        )
+
+    # Normalize date format
     from agent.tools.date_parser import normalize_date
     normalized_dob, date_error = normalize_date(request.date_of_birth)
 
@@ -198,41 +205,62 @@ def verify_webhook(
         return AuthResponse(
             is_error=True,
             message=f"Dogum tarihi formati anlasilamadi: {request.date_of_birth}",
-            guidance="Lutfen gun/ay/yil olarak soyleyin (ornek: 15/03/1990)",
+            guidance="Lutfen gun/ay/yil olarak soyleyin (ornek: 15 Mart 1990)",
         )
 
-    # Validate TC Kimlik
-    is_valid, error = validate_tc_kimlik(request.tc_kimlik)
-    if not is_valid:
+    # Normalize father initial
+    father_initial = request.father_initial.strip().upper()[:1]
+    if not father_initial.isalpha():
         return AuthResponse(
             is_error=True,
-            message=error,
+            message="Baba adinin ilk harfi gecersiz.",
         )
 
-    # DB lookup
-    tc_hash = _hash(request.tc_kimlik.replace(" ", "").replace("-", ""))
-    citizen = db.query(Citizen).filter(Citizen.tc_kimlik_hash == tc_hash).first()
+    # Search DB — match last 4 digits of TC hash + DOB + father initial
+    # Since we store hashed TC, we check all citizens matching DOB + father initial
+    # then verify last 4 digits against the full TC Kimlik
+    candidates = db.query(Citizen).filter(
+        Citizen.date_of_birth == normalized_dob,
+    ).all()
 
-    if not citizen:
+    # Filter by father initial
+    candidates = [c for c in candidates if c.father_name and c.father_name[0].upper() == father_initial]
+
+    if not candidates:
         return AuthResponse(
             is_error=True,
-            message="TC Kimlik numarasi sistemde bulunamadi.",
+            message="Bilgiler eslesmedi. Lutfen tekrar deneyin.",
         )
 
-    # Verify DOB
-    if normalized_dob != citizen.date_of_birth:
+    # Check last 4 digits against stored TC hashes
+    # We need to reverse-check: generate TC from seed and compare last 4
+    # In production this would use a last4_digits column — for demo we check all candidates
+    from api.seed_data import generate_valid_tc, SEED_CITIZENS
+    matched_citizen = None
+    for citizen in candidates:
+        # Find the seed data for this citizen to get full TC
+        for seed_row in SEED_CITIZENS:
+            tc_full = generate_valid_tc(seed_row[0])
+            if _hash(tc_full) == citizen.tc_kimlik_hash:
+                if tc_full[-4:] == last4:
+                    matched_citizen = citizen
+                    break
+        if matched_citizen:
+            break
+
+    if not matched_citizen:
         return AuthResponse(
             is_error=True,
-            message="Dogum tarihi eslesmedi.",
+            message="TC Kimlik son dort hanesi eslesmedi.",
         )
 
-    # Success — citizen_profile returned for dynamic variable assignment
-    logger.info(f"Auth webhook success | citizen_id={citizen.id}")
+    # Success
+    logger.info(f"Auth webhook success | citizen_id={matched_citizen.id}")
 
     return AuthResponse(
         is_error=False,
-        message=f"Hosgeldiniz, {citizen.first_name}.",
-        citizen_profile=_citizen_to_safe_profile(citizen),
+        message=f"Hosgeldiniz, {matched_citizen.first_name}.",
+        citizen_profile=_citizen_to_safe_profile(matched_citizen),
     )
 
 
