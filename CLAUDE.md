@@ -21,7 +21,7 @@ ElevenLabs (platform-native):          LangGraph (custom intelligence):
 ├─ Language detection (system tool)     ├─ Multi-step service routing
 ├─ Auth gating (workflow dispatch)      ├─ Tool orchestration (API calls)
 └─ Degradation fallback                ├─ Deterministic tool chaining
-                                       ├─ Conversation state (MemorySaver)
+                                       ├─ Stateless (full history per request)
                                        └─ Prompt versioning
 
 ElevenLabs Workflow (auth):
@@ -43,7 +43,7 @@ Single FastAPI server (agent/server.py, port 8080):
 /agent              — LangGraph agent core
   /nodes            — Graph node implementations (intent_classify, status_check, etc.)
   /prompts          — Versioned system prompts (v1.0/system_prompt_tr.md, _en.md)
-  /tools            — Validators (tc_kimlik.py, app_ref.py)
+  /tools            — Validators + schemas (tc_kimlik.py, app_ref.py, date_parser.py, schemas.py)
   config.py         — AgentConfig dataclass (incl. custom_llm_url)
   deploy.py         — Programmatic agent deploy to ElevenLabs (conversation config, workflow preserved)
   graph.py          — LangGraph StateGraph definition
@@ -57,10 +57,14 @@ Single FastAPI server (agent/server.py, port 8080):
   seed_data.py      — 23 citizen records + 5 appointments + 3 doc requests seeder
   services.py       — GET /applications/{ref}, POST /appointments, POST /documents/request, GET /services
   server.py         — Standalone FastAPI app (for independent testing)
+/rag                — RAG pipeline
+  chunker.py        — Document chunking (header-based + size overlap)
+  embed.py          — Embedding pipeline (OpenAI → Pinecone upsert)
+  retriever.py      — Pinecone query with language/category filters
 /dashboard          — Streamlit analytics app (planned)
-/data               — citizens.db (SQLite, gitignored)
+/data               — citizens.db (SQLite, gitignored), knowledge_base/ (40 docs + manifest.json)
 /docs               — auth_flow.md, conversation_flow.md
-/tests              — 119 tests total (94 unit + 25 live API)
+/tests              — Unit, integration, edge case, and live API tests
   conftest.py       — Shared test DB setup with per-test audit log cleanup
   /eval             — Automated conversation evaluation (planned)
 ```
@@ -88,7 +92,7 @@ Single FastAPI server (agent/server.py, port 8080):
 - System prompts live in versioned files under `/agent/prompts/`
 - Shared node utilities in `agent/nodes/utils.py` (e.g., mark_completed)
 - `load_dotenv()` is called once in `agent/graph.py` — not in individual nodes
-- Tests: `python -m pytest tests/ -v` (119 tests total — 94 unit + 25 live API tests)
+- Tests: `python -m pytest tests/ -v` (178 tests collected)
 - Test DB: in-memory SQLite via conftest.py, audit log cleaned per test
 
 ## User Preferences (for Claude)
@@ -138,7 +142,7 @@ make test-live         # Live API + simulation tests
 - **ISSUE-04:** Auth Flow Design — workflow-based deterministic auth (ElevenLabs blog pattern), KVKK compliance, TC Kimlik checksum
 - **ISSUE-05:** Auth Implementation — SQLite+SQLAlchemy, FastAPI auth endpoints, 20 tests, progressive failure guidance
 - **ISSUE-06:** Failure Handling — handoff endpoint, guest mode FAQ, 10 tests
-- **ISSUE-07:** LangGraph Workflow — 8-node graph, LLM intent classification, deterministic tool chaining, Custom LLM proxy with SSE streaming, MemorySaver checkpointer, 24 tests
+- **ISSUE-07:** LangGraph Workflow — 8-node graph, LLM intent classification, deterministic tool chaining, Custom LLM proxy with SSE streaming, 24 tests
 - **ISSUE-08:** Connect LangGraph to ElevenLabs Voice — transfer_to_number system tool call, buffer words, circuit breaker (Level 0/1/2 degradation), Custom LLM deploy config, backup_llm_config, conversation.py removed
 - **ISSUE-09:** Tool Schemas — 5 business tools (Pydantic validation + OpenAI format registry), 3 system tools (language_detection + end_call deployed, transfer_to_number deferred to Twilio), 22 tests
 - **ISSUE-10:** Knowledge Base — 40 documents (5 categories × 4 doc types × 2 languages), manifest.json

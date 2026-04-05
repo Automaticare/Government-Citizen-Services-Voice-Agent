@@ -1,7 +1,7 @@
 # Requires: make (install via `choco install make` or `winget install GnuWin32.Make`)
 # On Windows without make, use the commands directly.
 
-.PHONY: install test test-live deploy deploy-dry clean
+.PHONY: install test test-live deploy deploy-dry serve seed clean
 
 install:
 	python -m venv .venv
@@ -12,6 +12,12 @@ test:
 
 test-live:
 	python -m pytest tests/ -v -s -k "Live or IntentDetection"
+
+seed:
+	python -m api.seed_data
+
+serve:
+	python -m uvicorn agent.server:app --reload --port 8080
 
 deploy: test
 	python -m agent.deploy
