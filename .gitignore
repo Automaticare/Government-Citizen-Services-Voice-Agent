@@ -30,3 +30,4 @@ logs/
 *.pkl
 *.parquet
 *.db
+last_system_prompt.txt

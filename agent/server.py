@@ -296,11 +296,26 @@ async def chat_completions(request: ChatCompletionRequest):
             is_auth_artifact = len(last_content) <= 4
 
             if is_auth_artifact:
-                # Find first real user request (not auth data)
+                # Find first real user request (not auth data).
+                # Auth artifacts: short strings, dates, single letters.
+                # Real requests contain actual words like "başvuru", "randevu", etc.
+                import re
+                def _is_auth_data(text: str) -> bool:
+                    t = text.strip().lower()
+                    if len(t) <= 4:
+                        return True
+                    # Date patterns: "15 mart 1990", "15/03/1990"
+                    if re.match(r'^\d{1,2}[\s/.\-]\w+[\s/.\-]\d{4}$', t):
+                        return True
+                    # Pure numbers
+                    if t.replace(" ", "").replace("-", "").replace(".", "").isdigit():
+                        return True
+                    return False
+
                 original_request = None
                 for m in user_msgs:
                     content = m.content.strip()
-                    if len(content) > 10:  # Real request, not "0146" or "M"
+                    if not _is_auth_data(content):
                         original_request = content
                         break
 

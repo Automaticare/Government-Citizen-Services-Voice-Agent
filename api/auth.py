@@ -9,7 +9,7 @@ with audit logging. No raw PII in logs or responses.
 import hashlib
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -187,34 +187,24 @@ def verify_webhook(
     authenticated subagent), is_error=true on failure (routes to
     retry or human transfer).
     """
-    logger.info("Auth webhook attempt")
+    logger.info(f"Auth webhook attempt | last4={request.tc_kimlik_last4} | dob={request.date_of_birth} | father={request.father_initial}")
 
     # Validate last 4 digits
     last4 = "".join(c for c in request.tc_kimlik_last4 if c.isdigit())
     if len(last4) != 4:
-        return AuthResponse(
-            is_error=True,
-            message="TC Kimlik son dort hanesi 4 rakam olmali.",
-        )
+        raise HTTPException(status_code=401, detail="Kimlik dogrulama basarisiz. Lutfen bilgilerinizi kontrol edip tekrar deneyin.")
 
     # Normalize date format
     from agent.tools.date_parser import normalize_date
     normalized_dob, date_error = normalize_date(request.date_of_birth)
 
     if date_error:
-        return AuthResponse(
-            is_error=True,
-            message=f"Dogum tarihi formati anlasilamadi: {request.date_of_birth}",
-            guidance="Lutfen gun/ay/yil olarak soyleyin (ornek: 15 Mart 1990)",
-        )
+        raise HTTPException(status_code=401, detail="Kimlik dogrulama basarisiz. Lutfen bilgilerinizi kontrol edip tekrar deneyin.")
 
     # Normalize father initial
     father_initial = request.father_initial.strip().upper()[:1]
     if not father_initial.isalpha():
-        return AuthResponse(
-            is_error=True,
-            message="Baba adinin ilk harfi gecersiz.",
-        )
+        raise HTTPException(status_code=401, detail="Kimlik dogrulama basarisiz. Lutfen bilgilerinizi kontrol edip tekrar deneyin.")
 
     # Search DB — match last 4 digits of TC hash + DOB + father initial
     # Since we store hashed TC, we check all citizens matching DOB + father initial
@@ -227,10 +217,7 @@ def verify_webhook(
     candidates = [c for c in candidates if c.father_name and c.father_name[0].upper() == father_initial]
 
     if not candidates:
-        return AuthResponse(
-            is_error=True,
-            message="Bilgiler eslesmedi. Lutfen tekrar deneyin.",
-        )
+        raise HTTPException(status_code=401, detail="Kimlik dogrulama basarisiz. Lutfen bilgilerinizi kontrol edip tekrar deneyin.")
 
     # Check last 4 digits against stored TC hashes
     # We need to reverse-check: generate TC from seed and compare last 4
@@ -249,10 +236,7 @@ def verify_webhook(
             break
 
     if not matched_citizen:
-        return AuthResponse(
-            is_error=True,
-            message="TC Kimlik son dort hanesi eslesmedi.",
-        )
+        raise HTTPException(status_code=401, detail="Kimlik dogrulama basarisiz. Lutfen bilgilerinizi kontrol edip tekrar deneyin.")
 
     # Success
     logger.info(f"Auth webhook success | citizen_id={matched_citizen.id}")
