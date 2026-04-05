@@ -82,7 +82,18 @@ class TestIntentClassify:
 
 
 class TestStatusCheck:
-    """Test status check node with deterministic tool chaining."""
+    """Test status check node with deterministic tool chaining.
+
+    Uses monkeypatch to disable API calls — tests verify node logic
+    in isolation using profile data fallback, regardless of whether
+    a real server is running.
+    """
+
+    @pytest.fixture(autouse=True)
+    def disable_api(self, monkeypatch):
+        """Force fallback to profile data by disabling API call."""
+        import agent.nodes.status_check as sc
+        monkeypatch.setattr(sc, "_fetch_status", lambda ref: None)
 
     def test_additional_docs_chains_to_docs_info(self):
         from agent.nodes.status_check import status_check
@@ -135,6 +146,12 @@ class TestStatusCheck:
 
 class TestAppointmentBook:
     """Test appointment booking node."""
+
+    @pytest.fixture(autouse=True)
+    def disable_api(self, monkeypatch):
+        """Force fallback by disabling API call."""
+        import agent.nodes.appointment_book as ab
+        monkeypatch.setattr(ab, "_book_via_api", lambda *a, **k: (None, "service_unavailable"))
 
     def test_authenticated_books_slot(self):
         from agent.nodes.appointment_book import appointment_book
@@ -229,6 +246,12 @@ class TestComplaint:
 class TestDocumentRequest:
     """Test document request node."""
 
+    @pytest.fixture(autouse=True)
+    def disable_api(self, monkeypatch):
+        """Force fallback by disabling API call."""
+        import agent.nodes.document_request as dr
+        monkeypatch.setattr(dr, "_request_via_api", lambda *a, **k: None)
+
     def test_authenticated_creates_request(self):
         from agent.nodes.document_request import document_request
         state = make_state(
@@ -264,7 +287,20 @@ class TestGraphRouting:
 
 @pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
 class TestFullGraphFlow:
-    """Test end-to-end graph execution."""
+    """Test end-to-end graph execution.
+
+    API calls mocked to ensure tests pass regardless of server state.
+    """
+
+    @pytest.fixture(autouse=True)
+    def disable_api(self, monkeypatch):
+        """Disable all external API calls for graph flow tests."""
+        import agent.nodes.status_check as sc
+        import agent.nodes.appointment_book as ab
+        import agent.nodes.document_request as dr
+        monkeypatch.setattr(sc, "_fetch_status", lambda ref: None)
+        monkeypatch.setattr(ab, "_book_via_api", lambda *a, **k: (None, "service_unavailable"))
+        monkeypatch.setattr(dr, "_request_via_api", lambda *a, **k: None)
 
     def test_status_check_flow(self):
         from agent.graph import graph

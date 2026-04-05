@@ -24,6 +24,7 @@ class TestApplicationStatus:
         assert r.status_code == 200
         data = r.json()
         assert data["application_ref"] == "2024-TR-0001"
+        assert data["service_type"] == "passport"
         assert data["status"] == "in_review"
         assert data["first_name"] == "Ahmet"
         assert data["last_name_initial"] == "Y***"
@@ -40,6 +41,34 @@ class TestApplicationStatus:
     def test_profile_has_no_full_lastname(self):
         r = client.get("/applications/2024-TR-0001")
         assert "Yilmaz" not in str(r.json())
+
+
+class TestListCitizenApplications:
+    """Test GET /applications?citizen_id=X."""
+
+    def test_list_applications_for_citizen_with_multiple(self):
+        r = client.get("/applications", params={"citizen_id": 1})
+        assert r.status_code == 200
+        apps = r.json()
+        assert len(apps) == 2
+        refs = [a["application_ref"] for a in apps]
+        assert "2024-TR-0001" in refs
+        assert "2024-TR-0024" in refs
+
+    def test_list_applications_includes_service_type(self):
+        r = client.get("/applications", params={"citizen_id": 1})
+        types = {a["service_type"] for a in r.json()}
+        assert "passport" in types
+        assert "id_card" in types
+
+    def test_list_applications_unknown_citizen_404(self):
+        r = client.get("/applications", params={"citizen_id": 99999})
+        assert r.status_code == 404
+
+    def test_list_applications_single(self):
+        r = client.get("/applications", params={"citizen_id": 2})
+        assert r.status_code == 200
+        assert len(r.json()) == 1
 
 
 class TestAppointmentBooking:

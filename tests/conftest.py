@@ -33,20 +33,33 @@ def setup_test_db():
     tc_ahmet = generate_valid_tc("100000001")
     tc_fatma = generate_valid_tc("200000002")
 
+    ahmet = Citizen(
+        tc_kimlik_hash=hash_tc(tc_ahmet),
+        first_name="Ahmet", last_name="Yilmaz",
+        date_of_birth="15/03/1990",
+        language_preference="tr",
+    )
+    fatma = Citizen(
+        tc_kimlik_hash=hash_tc(tc_fatma),
+        first_name="Fatma", last_name="Kaya",
+        date_of_birth="22/07/1985",
+        language_preference="tr",
+    )
+    db.add_all([ahmet, fatma])
+    db.flush()  # Assign IDs
+
     db.add_all([
-        Citizen(
-            tc_kimlik_hash=hash_tc(tc_ahmet),
-            first_name="Ahmet", last_name="Yilmaz",
-            date_of_birth="15/03/1990",
-            application_ref="2024-TR-0001", application_status="in_review",
-            language_preference="tr",
+        Application(
+            citizen_id=ahmet.id, application_ref="2024-TR-0024",
+            service_type="id_card", status="approved",
         ),
-        Citizen(
-            tc_kimlik_hash=hash_tc(tc_fatma),
-            first_name="Fatma", last_name="Kaya",
-            date_of_birth="22/07/1985",
-            application_ref="2024-TR-0002", application_status="approved",
-            language_preference="tr",
+        Application(
+            citizen_id=ahmet.id, application_ref="2024-TR-0001",
+            service_type="passport", status="in_review",
+        ),
+        Application(
+            citizen_id=fatma.id, application_ref="2024-TR-0002",
+            service_type="id_card", status="approved",
         ),
     ])
     db.commit()
