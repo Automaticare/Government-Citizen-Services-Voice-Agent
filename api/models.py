@@ -43,9 +43,20 @@ class Citizen(Base):
     last_name = Column(String, nullable=False)
     father_name = Column(String, nullable=False, default="")
     date_of_birth = Column(String, nullable=False)  # DD/MM/YYYY
-    application_ref = Column(String, unique=True, index=True)
-    application_status = Column(String, nullable=False, default="pending")
     language_preference = Column(String, nullable=False, default="tr")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class Application(Base):
+    """Citizen service applications (1:N with Citizen)."""
+
+    __tablename__ = "applications"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    citizen_id = Column(Integer, ForeignKey("citizens.id"), nullable=False, index=True)
+    application_ref = Column(String, unique=True, nullable=False, index=True)
+    service_type = Column(String, nullable=False)  # passport, id_card, driver_license, civil_registry
+    status = Column(String, nullable=False, default="pending")  # pending, in_review, approved, rejected, additional_docs_needed
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 

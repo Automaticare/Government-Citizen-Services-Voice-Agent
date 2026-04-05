@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from agent.logging_config import get_logger
 from agent.tools.tc_kimlik import validate_tc_kimlik, mask_tc_kimlik
 from agent.tools.app_ref import validate_app_ref
-from api.models import AuthAuditLog, Citizen, get_db
+from api.models import Application, AuthAuditLog, Citizen, get_db
 
 logger = get_logger(__name__)
 
@@ -67,20 +67,33 @@ def _hash(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
 
 
-def _citizen_to_safe_profile(citizen: Citizen) -> dict:
+def _citizen_to_safe_profile(citizen: Citizen, db: Session) -> dict:
     """Convert citizen record to a safe profile (no raw PII).
 
     Includes citizen_id for subsequent API calls (appointment, document).
-    This is safe — citizen_id is an internal DB integer, not PII.
+    Returns the most recent application for backward compatibility with
+    ElevenLabs dynamic variables ({{application_ref}}, {{application_status}}).
     """
-    return {
+    # Get the most recent application (for backward compat with dashboard)
+    latest_app = (
+        db.query(Application)
+        .filter(Application.citizen_id == citizen.id)
+        .order_by(Application.id.desc())
+        .first()
+    )
+
+    profile = {
         "citizen_id": citizen.id,
         "first_name": citizen.first_name,
         "last_name_initial": citizen.last_name[0] + "***",
-        "application_ref": citizen.application_ref,
-        "application_status": citizen.application_status,
         "language_preference": citizen.language_preference,
     }
+
+    if latest_app:
+        profile["application_ref"] = latest_app.application_ref
+        profile["application_status"] = latest_app.status
+
+    return profile
 
 
 def _log_audit(
