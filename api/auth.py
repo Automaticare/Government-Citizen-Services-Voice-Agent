@@ -182,7 +182,7 @@ def verify_tc_kimlik(
     return AuthResponse(
         is_error=False,
         message=f"Hosgeldiniz, {citizen.first_name}.",
-        citizen_profile=_citizen_to_safe_profile(citizen),
+        citizen_profile=_citizen_to_safe_profile(citizen, db),
     )
 
 
@@ -257,7 +257,7 @@ def verify_webhook(
     return AuthResponse(
         is_error=False,
         message=f"Hosgeldiniz, {matched_citizen.first_name}.",
-        citizen_profile=_citizen_to_safe_profile(matched_citizen),
+        citizen_profile=_citizen_to_safe_profile(matched_citizen, db),
     )
 
 
@@ -280,13 +280,24 @@ def verify_app_ref(
             guidance=_failure_guidance(request.attempt_number),
         )
 
-    # Step 2: Look up citizen by application reference
+    # Step 2: Look up application by reference, then find citizen
     app_ref_cleaned = request.app_ref.strip().upper()
-    citizen = db.query(Citizen).filter(Citizen.application_ref == app_ref_cleaned).first()
+    application = db.query(Application).filter(Application.application_ref == app_ref_cleaned).first()
+
+    if not application:
+        _log_audit(db, request.session_id, "app_ref_lastname", request.attempt_number,
+                   "failure", failure_reason="app_ref_not_found")
+        return AuthResponse(
+            is_error=True,
+            message="Basvuru numarasi sistemde bulunamadi.",
+            guidance=_failure_guidance(request.attempt_number),
+        )
+
+    citizen = db.query(Citizen).filter(Citizen.id == application.citizen_id).first()
 
     if not citizen:
         _log_audit(db, request.session_id, "app_ref_lastname", request.attempt_number,
-                   "failure", failure_reason="app_ref_not_found")
+                   "failure", failure_reason="citizen_not_found")
         return AuthResponse(
             is_error=True,
             message="Basvuru numarasi sistemde bulunamadi.",
@@ -296,7 +307,7 @@ def verify_app_ref(
     # Step 3: Verify last name (case-insensitive)
     if request.last_name.strip().lower() != citizen.last_name.lower():
         _log_audit(db, request.session_id, "app_ref_lastname", request.attempt_number,
-                   "failure", citizen_id_hash=_hash(citizen.application_ref),
+                   "failure", citizen_id_hash=_hash(application.application_ref),
                    failure_reason="lastname_mismatch")
         return AuthResponse(
             is_error=True,
@@ -306,11 +317,11 @@ def verify_app_ref(
 
     # Success
     _log_audit(db, request.session_id, "app_ref_lastname", request.attempt_number,
-               "success", citizen_id_hash=_hash(citizen.application_ref))
+               "success", citizen_id_hash=_hash(application.application_ref))
     logger.info(f"Auth success (app_ref) | session={request.session_id}")
 
     return AuthResponse(
         is_error=False,
         message=f"Hosgeldiniz, {citizen.first_name}.",
-        citizen_profile=_citizen_to_safe_profile(citizen),
+        citizen_profile=_citizen_to_safe_profile(citizen, db),
     )

@@ -11,7 +11,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from api.models import Base, Citizen, AuthAuditLog, get_db
+from api.models import Application, Base, Citizen, AuthAuditLog, get_db
 from api.server import app
 from api.seed_data import generate_valid_tc, hash_tc
 

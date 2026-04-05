@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from agent.logging_config import get_logger
-from api.models import Appointment, Citizen, DocumentRequest, get_db
+from api.models import Application, Appointment, Citizen, DocumentRequest, get_db
 
 logger = get_logger(__name__)
 
@@ -24,6 +24,7 @@ router = APIRouter(tags=["services"])
 
 class ApplicationStatusResponse(BaseModel):
     application_ref: str
+    service_type: str
     status: str
     first_name: str
     last_name_initial: str
@@ -133,21 +134,53 @@ ESTIMATED_COMPLETION = {
 @router.get("/applications/{ref_number}", response_model=ApplicationStatusResponse)
 def get_application_status(ref_number: str, db: Session = Depends(get_db)):
     """Look up application status by reference number."""
-    citizen = db.query(Citizen).filter(Citizen.application_ref == ref_number.strip().upper()).first()
+    application = db.query(Application).filter(
+        Application.application_ref == ref_number.strip().upper()
+    ).first()
 
-    if not citizen:
+    if not application:
         raise HTTPException(status_code=404, detail="Application not found")
+
+    citizen = db.query(Citizen).filter(Citizen.id == application.citizen_id).first()
 
     logger.info(f"Application lookup | ref={ref_number}")
 
     return ApplicationStatusResponse(
-        application_ref=citizen.application_ref,
-        status=citizen.application_status,
-        first_name=citizen.first_name,
-        last_name_initial=citizen.last_name[0] + "***",
-        estimated_completion=ESTIMATED_COMPLETION.get(citizen.application_status),
-        notes=f"Basvuru {citizen.application_status} asamasindadir." if citizen.application_status != "approved" else None,
+        application_ref=application.application_ref,
+        service_type=application.service_type,
+        status=application.status,
+        first_name=citizen.first_name if citizen else "Unknown",
+        last_name_initial=(citizen.last_name[0] + "***") if citizen else "?***",
+        estimated_completion=ESTIMATED_COMPLETION.get(application.status),
+        notes=f"Basvuru {application.status} asamasindadir." if application.status != "approved" else None,
     )
+
+
+@router.get("/applications", response_model=list[ApplicationStatusResponse])
+def list_citizen_applications(citizen_id: int, db: Session = Depends(get_db)):
+    """List all applications for a citizen."""
+    citizen = db.query(Citizen).filter(Citizen.id == citizen_id).first()
+    if not citizen:
+        raise HTTPException(status_code=404, detail="Citizen not found")
+
+    applications = db.query(Application).filter(
+        Application.citizen_id == citizen_id
+    ).order_by(Application.id.desc()).all()
+
+    logger.info(f"Applications list | citizen_id={citizen_id} | count={len(applications)}")
+
+    return [
+        ApplicationStatusResponse(
+            application_ref=app.application_ref,
+            service_type=app.service_type,
+            status=app.status,
+            first_name=citizen.first_name,
+            last_name_initial=citizen.last_name[0] + "***",
+            estimated_completion=ESTIMATED_COMPLETION.get(app.status),
+            notes=f"Basvuru {app.status} asamasindadir." if app.status != "approved" else None,
+        )
+        for app in applications
+    ]
 
 
 @router.post("/appointments", response_model=AppointmentResponse)

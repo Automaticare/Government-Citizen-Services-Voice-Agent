@@ -13,7 +13,7 @@ from agent.nodes.utils import mark_completed
 
 logger = get_logger(__name__)
 
-API_BASE = "http://localhost:8001"
+API_BASE = "http://localhost:8080"
 
 
 def _book_via_api(citizen_id: int, service_type: str, preferred_date: str | None) -> tuple[dict | None, str | None]:

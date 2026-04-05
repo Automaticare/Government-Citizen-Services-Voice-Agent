@@ -22,7 +22,7 @@ from rag.retriever import search, format_context
 
 logger = get_logger(__name__)
 
-API_BASE = "http://localhost:8001"
+API_BASE = "http://localhost:8080"
 
 
 def _rag_lookup(query: str, language: str, category: str | None = None) -> str:

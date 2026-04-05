@@ -13,7 +13,7 @@ from agent.nodes.utils import mark_completed
 
 logger = get_logger(__name__)
 
-API_BASE = "http://localhost:8001"
+API_BASE = "http://localhost:8080"
 
 
 def _request_via_api(citizen_id: int, document_type: str) -> dict | None:
