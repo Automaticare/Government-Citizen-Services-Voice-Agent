@@ -81,6 +81,7 @@ Single FastAPI server (agent/server.py, port 8080):
 - **Pre-auth FAQ via ElevenLabs native knowledge base** — platform mastery, no Custom LLM needed
 - **Post-auth operations via Custom LLM / LangGraph** — deterministic tool chaining, RAG, API orchestration
 - **Stateless message passing** — ElevenLabs sends full history each turn, dynamic variables parsed every turn, no server-side checkpointer needed
+- **Dynamic context management** — intent_classify receives full filtered conversation history (system messages excluded), enabling follow-up understanding and entity resolution without extra LLM calls. Approach: LangChain "select" strategy over "compress" to avoid voice latency
 - **Graceful degradation** — Level 0: full LangGraph, Level 1: direct OpenAI (circuit breaker after 3 failures, 60s cooldown), Level 2: ElevenLabs native fallback (backup_llm_config)
 - **Sentence-level SSE streaming** — responses split by sentence with delays for TTS processing
 - **STT-friendly auth** — last 4 digits + DOB + father initial instead of full 11-digit TC Kimlik

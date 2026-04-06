@@ -52,15 +52,13 @@ def intent_classify(state: AgentState) -> dict:
     if not messages:
         return {"current_intent": "unknown"}
 
-    # Send last 4 messages for context (not just last message).
-    # This helps the LLM understand follow-up responses like "pasaport"
-    # after the agent listed multiple applications.
-    # System messages are filtered out to avoid confusing the classifier.
+    # Send full conversation history (system messages excluded).
+    # ElevenLabs sends full history each turn — we use it all so the
+    # LLM understands follow-ups, topic changes, and conversation state.
     conv_messages = [m for m in messages if not isinstance(m, SystemMessage)]
-    context = conv_messages[-4:] if len(conv_messages) > 4 else conv_messages
     response = _llm.invoke([
         SystemMessage(content=INTENT_SYSTEM_PROMPT),
-        *context,
+        *conv_messages,
     ])
 
     raw_intent = response.content.strip().lower()

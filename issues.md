@@ -710,27 +710,34 @@ Conversation Management
 P1
 
 ## Dependencies
-ISSUE-07
+ISSUE-07, ISSUE-13 (Application 1:N — DONE)
 
 ## Description
-Implement robust context management so the agent maintains awareness of the full conversation history and can reference previous turns naturally.
+Implement dynamic context management so the agent understands the full conversation flow. Instead of looking at the last N messages statically, send the full filtered conversation history to intent_classify so the LLM can understand follow-ups, topic references, and conversation state.
+
+**Approach:** Filtered full history (B option) — ElevenLabs sends full message history each turn. We filter out system messages (99K+ tokens) and pass all user + assistant messages to intent_classify. GPT-4o-mini's 128K context handles 10-minute conversations easily. No extra LLM call, no latency increase, works with ElevenLabs' stateless architecture.
+
+**Reference:** LangChain Context Engineering — "write, select, compress, isolate" strategies. We use "select" (filter irrelevant system messages) rather than "compress" (summarize) to avoid extra latency in voice conversations.
 
 ## Tasks
-- [ ] Implement conversation memory in LangGraph state — store all turns with timestamps
-- [ ] Build context summarization — for long calls, summarize earlier context to stay within token limits
-- [ ] Implement entity tracking — remember caller's name, ID, current request across turns
-- [ ] Handle context references — caller says "what about my other application?" and agent understands
-- [ ] Prerequisite: Application table must be separated from Citizen (1:N) — see ISSUE-13 DB schema debt
-- [ ] Implement conversation threading — if caller has multiple requests, track each separately
-- [ ] Build context injection for tool calls — pass relevant context to API calls automatically
+- [ ] intent_classify: send full filtered history (user + assistant messages only, no system messages) instead of last 4 messages
+- [ ] intent_classify prompt: update to analyze full conversation context, understand follow-ups and references
+- [ ] Verify auth state persistence — citizen_profile available via dynamic variables every turn
+- [ ] Test: "pasaport" after application listing → status_check (not faq)
+- [ ] Test: "randevu almak istiyorum" after status check → appointment_book (no re-auth)
+- [ ] Test: "az önce baktığımız başvuru" → resolves to correct application
+- [ ] Test: long conversation (10+ turns) quality doesn't degrade
 
 ## Acceptance Criteria
-- [ ] Agent correctly references information from earlier in the conversation
-- [ ] Long conversations (10+ turns) don't degrade in quality
-- [ ] Entity references are resolved correctly ("my appointment" → the appointment just booked)
-- [ ] Context summarization keeps token usage manageable
+- [ ] Agent correctly understands follow-up responses in context (e.g., "pasaport" after listing)
+- [ ] Auth state persists — no re-auth request after first authentication
+- [ ] Entity references resolved ("my appointment" → the one just discussed)
+- [ ] No extra LLM call — zero latency increase vs current implementation
+- [ ] Works with ElevenLabs' stateless full-history architecture
 
 ## References
+- https://blog.langchain.com/context-engineering-for-agents/
+- https://docs.langchain.com/oss/python/langchain/context-engineering
 - https://elevenlabs.io/blog/unpacking-elevenagents-orchestration-engine
 
 ---
@@ -1187,3 +1194,35 @@ Prepare a concise written summary that can be shared alongside the video and rep
 - [ ] Metrics are concrete and credible
 - [ ] ElevenLabs platform advantages are highlighted naturally, not forced
 - [ ] Summary makes the reader want to see the full demo
+
+---
+
+# ISSUE-29: DTMF Numpad Authentication
+
+## Module
+Voice Infrastructure
+
+## Priority
+P2
+
+## Dependencies
+ISSUE-15B (Twilio)
+
+## Description
+Allow callers to enter TC Kimlik last 4 digits via phone numpad (DTMF tones) instead of speaking them aloud. This eliminates STT misrecognition of numbers and provides a more familiar, secure experience — similar to how banks handle PIN entry over phone.
+
+**FDE impact:** Shows deep understanding of telephony UX and enterprise voice security patterns. Banks, insurance companies, and government call centers all use DTMF for sensitive data entry.
+
+## Tasks
+- [ ] Research Twilio DTMF gather integration with ElevenLabs (Twilio `<Gather>` verb or ElevenLabs native DTMF input)
+- [ ] Implement DTMF collection endpoint — Twilio sends gathered digits to our webhook
+- [ ] Integrate with auth webhook — DTMF digits used as tc_kimlik_last4 parameter
+- [ ] Agent prompts user: "Lutfen TC Kimlik numaranizin son dort hanesini telefonunuzun tuslarindan giriniz"
+- [ ] Fallback: if DTMF not received within timeout, fall back to voice input
+- [ ] Test with real phone call via Twilio
+
+## Acceptance Criteria
+- [ ] Caller can enter 4 digits via numpad during a live call
+- [ ] Digits are correctly captured and sent to auth webhook
+- [ ] Fallback to voice input works when numpad not used
+- [ ] Experience feels natural — similar to banking IVR systems
