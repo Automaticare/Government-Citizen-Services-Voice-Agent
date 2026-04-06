@@ -5,14 +5,18 @@ Generates an empathetic transfer message based on conversation context.
 Uses LLM to adapt tone — frustrated caller gets acknowledgment,
 normal request gets standard transfer message.
 
+Also generates a context summary for the human operator and logs
+the handoff event via /handoff endpoint.
+
 In production with Twilio (ENABLE_PHONE_TRANSFER=true), also returns
-a transfer_to_number system tool call.
+a transfer_to_number system tool call with operator context.
 """
 
 import json
 import os
 import uuid
 
+import httpx
 from langchain_core.messages import AIMessage, SystemMessage, HumanMessage
 from langchain_openai import ChatOpenAI
 
@@ -22,6 +26,7 @@ from agent.nodes.utils import mark_completed
 
 logger = get_logger(__name__)
 
+API_BASE = "http://localhost:8080"
 _TRANSFER_NUMBER = "+905001234567"
 _ENABLE_TRANSFER = os.getenv("ENABLE_PHONE_TRANSFER", "false").lower() == "true"
 
@@ -42,45 +47,115 @@ Rules:
 - Respond in {language_name}
 - Keep it warm and human — this person is about to talk to a real person"""
 
+SUMMARY_PROMPT = """Summarize this conversation for a human operator in 2-3 sentences.
+Include: what the citizen wanted, what was done, why they're being transferred.
+If the citizen is authenticated, mention their name.
+Write in {language_name}. Be concise and factual."""
+
+
+def _generate_operator_summary(messages: list, language: str) -> str:
+    """Generate conversation summary for the human operator."""
+    language_name = "English" if language == "en" else "Turkish"
+    conv_messages = [m for m in messages if not isinstance(m, SystemMessage)]
+
+    try:
+        response = _llm.invoke([
+            SystemMessage(content=SUMMARY_PROMPT.format(language_name=language_name)),
+            *conv_messages[-10:],  # Last 10 messages for context
+        ])
+        return response.content
+    except Exception as e:
+        logger.warning(f"Could not generate operator summary: {e}")
+        return "Vatandas operator yardimi talep ediyor." if language != "en" else "Citizen requesting operator assistance."
+
+
+def _log_handoff(session_id: str, reason: str, summary: str, language: str):
+    """Log handoff event via API."""
+    try:
+        httpx.post(f"{API_BASE}/handoff", json={
+            "session_id": session_id or f"escalate-{uuid.uuid4().hex[:8]}",
+            "reason": reason,
+            "language": language,
+        }, timeout=3.0)
+    except Exception as e:
+        logger.warning(f"Could not log handoff: {e}")
+
+
+def _detect_escalation_reason(messages: list) -> str:
+    """Detect why the caller is being escalated from conversation context."""
+    if not messages:
+        return "caller_request"
+
+    last_user_msg = ""
+    for msg in reversed(messages):
+        if isinstance(msg, HumanMessage) or getattr(msg, "type", "") == "human":
+            last_user_msg = msg.content.lower()
+            break
+
+    # Check for frustration indicators
+    frustration_words = ["kizgin", "sinirli", "sacma", "rezalet", "berbat",
+                         "angry", "frustrated", "ridiculous", "terrible"]
+    if any(w in last_user_msg for w in frustration_words):
+        return "frustration"
+
+    return "caller_request"
+
 
 def escalate(state: AgentState) -> dict:
-    """Escalate to human operator with context-aware empathetic message."""
+    """Escalate to human operator with context summary and empathetic message."""
     language = state.get("language", "tr")
     messages = state.get("messages", [])
+    profile = state.get("citizen_profile")
     language_name = "English" if language == "en" else "Turkish"
 
-    # Get last user message for context
+    # Get last user message for tone
     user_msg = ""
     for msg in reversed(messages):
         if isinstance(msg, HumanMessage) or getattr(msg, "type", "") == "human":
             user_msg = msg.content
             break
 
-    # LLM generates context-aware transfer message
+    # Generate empathetic transfer message for caller
     response = _llm.invoke([
         SystemMessage(content=ESCALATE_PROMPT.format(language_name=language_name)),
         HumanMessage(content=user_msg or "Operator ile gorusmek istiyorum"),
     ])
     client_message = response.content
 
-    logger.info(f"Escalation triggered | transfer_enabled={_ENABLE_TRANSFER}")
+    # Generate context summary for operator
+    operator_summary = _generate_operator_summary(messages, language)
+
+    # Detect escalation reason
+    reason = _detect_escalation_reason(messages)
+
+    # Add citizen info to summary if authenticated
+    if profile:
+        first_name = profile.get("first_name", "")
+        citizen_id = profile.get("citizen_id", "")
+        operator_summary = f"Vatandas: {first_name} (ID: {citizen_id}). {operator_summary}" if language != "en" else f"Citizen: {first_name} (ID: {citizen_id}). {operator_summary}"
+
+    # Log handoff
+    _log_handoff(
+        session_id=state.get("messages", [{}])[0].content[:20] if messages else "",
+        reason=reason,
+        summary=operator_summary,
+        language=language,
+    )
+
+    logger.info(f"Escalation | reason={reason} | transfer_enabled={_ENABLE_TRANSFER}")
+    logger.info(f"Operator summary: {operator_summary}")
 
     if _ENABLE_TRANSFER:
-        if language == "en":
-            agent_message = "Citizen requesting human assistance via voice agent."
-        else:
-            agent_message = "Vatandas sesli asistan uzerinden operator yardimi talep ediyor."
-
         tool_call = {
             "id": f"call_{uuid.uuid4().hex[:12]}",
             "type": "function",
             "function": {
                 "name": "transfer_to_number",
                 "arguments": json.dumps({
-                    "reason": "Citizen escalation",
+                    "reason": reason,
                     "transfer_number": _TRANSFER_NUMBER,
                     "client_message": client_message,
-                    "agent_message": agent_message,
+                    "agent_message": operator_summary,
                 }),
             },
         }
