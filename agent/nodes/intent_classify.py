@@ -43,7 +43,7 @@ Important rules:
 
 Respond with ONLY the intent name, nothing else."""
 
-_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+_llm = ChatOpenAI(model="gpt-4o", temperature=0)
 
 
 def intent_classify(state: AgentState) -> dict:

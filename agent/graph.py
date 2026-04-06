@@ -57,10 +57,18 @@ def entry_router(state: AgentState) -> str:
 
     Special case: service_router means "figure out what the user wants"
     — route to intent_classify so LLM can determine from conversation history.
+
+    For all other workflow nodes, we still run intent_classify first.
+    If the classified intent matches the workflow node, we go there.
+    If it doesn't (user changed topic), we go to the correct node.
+    This handles the case where workflow backward edges don't trigger
+    with Custom LLM — LangGraph handles topic changes internally.
     """
     workflow_node = state.get("workflow_node")
-    if workflow_node and workflow_node in WORKFLOW_NODES and workflow_node != "service_router":
-        return workflow_node
+    if workflow_node and workflow_node in WORKFLOW_NODES:
+        # Always run through intent_classify — it will determine
+        # the correct node even if workflow is stuck on one node
+        pass
     return "intent_classify"
 
 

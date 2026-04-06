@@ -18,7 +18,7 @@ from rag.retriever import search, format_context
 
 logger = get_logger(__name__)
 
-_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+_llm = ChatOpenAI(model="gpt-4o", temperature=0)
 
 RELEVANCE_THRESHOLD = 0.3
 

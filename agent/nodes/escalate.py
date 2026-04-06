@@ -25,7 +25,7 @@ logger = get_logger(__name__)
 _TRANSFER_NUMBER = "+905001234567"
 _ENABLE_TRANSFER = os.getenv("ENABLE_PHONE_TRANSFER", "false").lower() == "true"
 
-_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
+_llm = ChatOpenAI(model="gpt-4o", temperature=0.3)
 
 ESCALATE_PROMPT = """You are a government citizen services assistant named Umut.
 The caller needs to be transferred to a human operator.

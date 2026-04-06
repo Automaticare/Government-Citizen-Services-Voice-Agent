@@ -17,7 +17,7 @@ from agent.logging_config import get_logger
 
 logger = get_logger(__name__)
 
-_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
+_llm = ChatOpenAI(model="gpt-4o", temperature=0.7)
 
 ROUTER_PROMPT = """You are Umut, a government citizen services voice assistant.
 The citizen has been authenticated. Respond naturally to their request.

@@ -308,6 +308,7 @@ async def chat_completions(request: ChatCompletionRequest):
 
         # Extract citizen profile from dynamic variables
         name_match = re.search(r'Vatandasin adi:\s*(\w+)', system_prompt_content)
+        id_match = re.search(r'Vatandas ID:\s*(\d+)', system_prompt_content)
         ref_match = re.search(r'Basvuru numarasi:\s*([\w-]+)', system_prompt_content)
         status_match = re.search(r'Basvuru durumu:\s*(\w+)', system_prompt_content)
 
@@ -315,6 +316,7 @@ async def chat_completions(request: ChatCompletionRequest):
             auth_status = "authenticated"
             citizen_profile = {
                 "first_name": name_match.group(1),
+                "citizen_id": int(id_match.group(1)) if id_match else None,
                 "application_ref": ref_match.group(1) if ref_match else "",
                 "application_status": status_match.group(1) if status_match else "",
             }

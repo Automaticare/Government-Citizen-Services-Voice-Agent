@@ -154,7 +154,7 @@ class TestAppointmentBook:
         import agent.nodes.appointment_book as ab
         monkeypatch.setattr(ab, "_book_via_api", lambda *a, **k: (None, "service_unavailable"))
 
-    def test_authenticated_books_slot(self):
+    def test_authenticated_asks_service_type(self):
         from agent.nodes.appointment_book import appointment_book
         state = make_state(
             auth_status="authenticated",
@@ -162,8 +162,8 @@ class TestAppointmentBook:
         )
         result = appointment_book(state)
         last_msg = result["messages"][-1].content.lower()
-        assert "randevu" in last_msg or "appointment" in last_msg
-        assert "appointment_book" in result["completed_intents"]
+        # Should ask which service type when not detected from messages
+        assert "hizmet" in last_msg or "service" in last_msg or "randevu" in last_msg
 
     def test_unauthenticated_asks_for_auth(self):
         from agent.nodes.appointment_book import appointment_book
@@ -281,20 +281,12 @@ class TestGraphRouting:
         assert route_by_intent({"current_intent": "fee_inquiry"}) == "faq_answer"
         assert route_by_intent({"current_intent": "unknown"}) == "faq_answer"
 
-    def test_entry_router_with_workflow_node(self):
+    def test_entry_router_always_classifies(self):
+        """Entry router always goes to intent_classify — LangGraph handles routing."""
         from agent.graph import entry_router
-        state = make_state(workflow_node="status_check")
-        assert entry_router(state) == "status_check"
-
-    def test_entry_router_without_workflow_node(self):
-        from agent.graph import entry_router
-        state = make_state(workflow_node=None)
-        assert entry_router(state) == "intent_classify"
-
-    def test_entry_router_invalid_workflow_node(self):
-        from agent.graph import entry_router
-        state = make_state(workflow_node="nonexistent")
-        assert entry_router(state) == "intent_classify"
+        assert entry_router(make_state(workflow_node="status_check")) == "intent_classify"
+        assert entry_router(make_state(workflow_node=None)) == "intent_classify"
+        assert entry_router(make_state(workflow_node="nonexistent")) == "intent_classify"
 
 
 # --- Full graph flow tests ---
