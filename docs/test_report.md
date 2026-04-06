@@ -68,10 +68,46 @@
 - **Workflow backward edges** — don't trigger with Custom LLM, handled by LangGraph fallback
 - **Very long conversations (50+ turns)** — not stress tested, potential token limit issues
 
+## Performance & Latency Results
+
+Each node measured 3 times via curl (end-to-end including SSE streaming):
+
+| Node | Min | P50 | Max | Notes |
+|------|-----|-----|-----|-------|
+| Complaint | 1850ms | 1934ms | 2099ms | Fastest — simple LLM call |
+| Status Check | 2264ms | 2317ms | 2318ms | Consistent — API call + response |
+| Escalate | 3292ms | 3378ms | 3607ms | LLM generates empathetic msg + operator summary |
+| FAQ (RAG) | 4767ms | 5513ms | 6494ms | Slowest — Pinecone query + LLM grounded answer |
+| Appointment | 2697ms | 5263ms | 10145ms | Variable — API conflict check + booking |
+
+### Latency Breakdown (estimated per component)
+
+| Component | Time |
+|-----------|------|
+| Intent classify (GPT-4o) | ~800-1200ms |
+| Service router (GPT-4o) | ~500-800ms |
+| Pinecone RAG query | ~300-500ms |
+| Government API call | ~10-50ms |
+| LLM response generation | ~500-1500ms |
+| SSE streaming overhead | ~100-200ms |
+
+### Bottleneck Analysis
+
+1. **FAQ is slowest** — Pinecone RAG + LLM grounded answer = double LLM call effectively (intent classify + faq_answer)
+2. **Appointment has high variance** — conflict checking adds API calls, occasional OpenAI latency spikes
+3. **All nodes exceed 500ms target** — expected with GPT-4o. Production optimization: switch intent_classify to GPT-4o-mini (faster, cheaper) while keeping service nodes on GPT-4o
+
+### Optimization Recommendations
+
+1. **Intent classify → GPT-4o-mini** — intent classification doesn't need GPT-4o reasoning power. Would save ~300-500ms per request
+2. **RAG result caching** — frequently asked questions (working hours, required docs) could be cached for 1 hour
+3. **Parallel execution** — intent classify and RAG query could run in parallel for FAQ intents
+4. **ElevenLabs buffer words** — "Bir saniye bakiyorum..." sent before LangGraph processes, masking latency
+
 ## Test Environment
 
 - Server: FastAPI + uvicorn, port 8080
 - LLM: GPT-4o (all LangGraph nodes)
 - RAG: Pinecone (gov-citizen-services index)
 - DB: SQLite (data/citizens.db)
-- Tests: 166 unit/integration tests + 31 e2e/edge case tests
+- Tests: 166 unit/integration tests + 31 e2e/edge case tests + 15 latency measurements
