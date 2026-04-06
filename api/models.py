@@ -43,6 +43,7 @@ class Citizen(Base):
     last_name = Column(String, nullable=False)
     father_name = Column(String, nullable=False, default="")
     date_of_birth = Column(String, nullable=False)  # DD/MM/YYYY
+    phone_number = Column(String, nullable=True, index=True)  # E.164 format (+905551234567)
     language_preference = Column(String, nullable=False, default="tr")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 

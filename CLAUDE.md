@@ -178,6 +178,14 @@ make test-live         # Live API + simulation tests
 - ⚠️ Auth + appointment/document — not yet e2e tested but code ready
 - ⚠️ Tool chaining (status → RAG for docs) — works in terminal, not yet e2e tested with auth
 
+### Twilio Phone Integration (ISSUE-15B) — IN PROGRESS
+- Twilio trial account created, US number: +1 (740) 554-8808
+- Number imported to ElevenLabs dashboard, agent assigned for inbound calls
+- Voice webhook: https://api.us.elevenlabs.io/twilio/inbound_call
+- Agent answers but call drops — likely ElevenLabs credit exhaustion
+- Pending: Twilio personalization webhook for hybrid silent auth (caller_id → DB lookup)
+- Pending: E2E voice test when credits renewed
+
 ### Technical Debt
 - Buffer words after auth ("kontrol ediyorum") — causes workflow edge issues, deferred
 - Server.py has debug logging (last_system_prompt.txt) — remove before production

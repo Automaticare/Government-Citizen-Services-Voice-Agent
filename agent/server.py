@@ -108,11 +108,13 @@ app = FastAPI(
 from api.auth import router as auth_router
 from api.handoff import router as handoff_router
 from api.services import router as services_router
+from api.twilio_webhook import router as twilio_router
 from api.models import init_db
 
 app.include_router(auth_router)
 app.include_router(handoff_router)
 app.include_router(services_router)
+app.include_router(twilio_router)
 
 # Ensure DB tables exist on startup
 # Note: using on_event for simplicity since app already defined.
