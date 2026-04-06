@@ -289,6 +289,74 @@ else:
 
 
 # =====================================================
+# ANOMALY DETECTION
+# =====================================================
+st.header("System Health & Anomaly Detection")
+
+anomalies = []
+
+# 1. Escalation rate check (threshold: 20%)
+escalation_rate = escalated / max(1, total_requests) * 100
+if escalation_rate > 20:
+    anomalies.append(("🔴", "High Escalation Rate", f"{escalation_rate:.1f}% (threshold: 20%)"))
+elif escalation_rate > 10:
+    anomalies.append(("🟡", "Elevated Escalation Rate", f"{escalation_rate:.1f}% (threshold: 20%)"))
+
+# 2. Response time check (threshold: 3000ms)
+if df["response_time_ms"].notna().any():
+    avg_resp = df["response_time_ms"].mean()
+    if avg_resp > 3000:
+        anomalies.append(("🔴", "High Response Latency", f"{avg_resp:.0f}ms avg (threshold: 3000ms)"))
+    elif avg_resp > 2000:
+        anomalies.append(("🟡", "Elevated Response Latency", f"{avg_resp:.0f}ms avg (threshold: 3000ms)"))
+
+# 3. Auth failure rate check (threshold: 30%)
+if not auth_df.empty:
+    total_auth = len(auth_df)
+    auth_failures = (auth_df["result"] == "failure").sum()
+    auth_fail_rate = auth_failures / max(1, total_auth) * 100
+    if auth_fail_rate > 30:
+        anomalies.append(("🔴", "High Auth Failure Rate", f"{auth_fail_rate:.0f}% ({auth_failures}/{total_auth}) (threshold: 30%)"))
+    elif auth_fail_rate > 15:
+        anomalies.append(("🟡", "Elevated Auth Failure Rate", f"{auth_fail_rate:.0f}% ({auth_failures}/{total_auth}) (threshold: 30%)"))
+
+# 4. Low resolution rate (threshold: 70%)
+if resolution_rate < 70:
+    anomalies.append(("🔴", "Low Resolution Rate", f"{resolution_rate:.0f}% (threshold: 70%)"))
+elif resolution_rate < 85:
+    anomalies.append(("🟡", "Below Target Resolution", f"{resolution_rate:.0f}% (threshold: 85%)"))
+
+# 5. Call volume anomaly — compare last hour to average
+df_with_hour = df.copy()
+df_with_hour["hour"] = df_with_hour["timestamp"].dt.floor("h")
+hourly_counts = df_with_hour.groupby("hour").size()
+if len(hourly_counts) > 2:
+    avg_hourly = hourly_counts.mean()
+    last_hour = hourly_counts.iloc[0] if len(hourly_counts) > 0 else 0
+    if last_hour > avg_hourly * 2:
+        anomalies.append(("🟡", "Volume Spike", f"Last hour: {last_hour} requests (avg: {avg_hourly:.0f})"))
+    elif last_hour < avg_hourly * 0.3 and avg_hourly > 3:
+        anomalies.append(("🟡", "Volume Drop", f"Last hour: {last_hour} requests (avg: {avg_hourly:.0f})"))
+
+# Display anomalies
+if not anomalies:
+    st.success("✅ All systems healthy — no anomalies detected")
+else:
+    for icon, title, detail in anomalies:
+        st.warning(f"{icon} **{title}** — {detail}")
+
+# Health summary
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Escalation Rate", f"{escalation_rate:.1f}%", delta=None, delta_color="inverse")
+col2.metric("Avg Response", f"{avg_resp:.0f}ms" if df["response_time_ms"].notna().any() else "N/A")
+if not auth_df.empty:
+    col3.metric("Auth Fail Rate", f"{auth_fail_rate:.0f}%")
+else:
+    col3.metric("Auth Fail Rate", "N/A")
+col4.metric("Resolution Rate", f"{resolution_rate:.0f}%")
+
+
+# =====================================================
 # RECENT CONVERSATIONS
 # =====================================================
 st.header("Recent Conversations")
