@@ -41,8 +41,8 @@
           ▼      │                   │        │         │   │
     ┌───────────┐│                   │        │         │   │
     │   AUTH    ││                   │        │         │   │
-    │  FLOW    ││                   │        │         │   │
-    └──┬────┬──┘│                   │        │         │   │
+    │  FLOW    ││                    │        │         │   │
+    └──┬────┬──┘│                    │        │         │   │
    OK  │  FAIL│  │                   │        │         │   │
        │     ▼  │                   │        │         │   │
        │┌──────┐│                   │        │         │   │
@@ -88,27 +88,24 @@
 
 ```
 ┌──────────────────────────────────────────────┐
-│              AUTH FLOW                        │
+│              AUTH FLOW                       │
 │                                              │
-│  1. KVKK consent notice                     │
-│     "Bu görüşme kaydedilmektedir..."        │
+│  1. KVKK consent notice                      │
+│     "Bu görüşme kaydedilmektedir..."         │
+│                                              │                                     │
 │                                              │
-│  2. Ask preferred method:                    │
-│     A) TC Kimlik + Doğum Tarihi             │
-│     B) Başvuru No + Soyad                   │
-│                                              │
-│  3. Collect fields ONE BY ONE               │
-│     - Validate format in real-time           │
-│     - TC Kimlik: 11 digits + checksum       │
+│  2. Collect fields ONE BY ONE                │
+│     -                                        │
+│     - TC Kimlik: 11 digits + checksum        │
 │     - DOB: valid date                        │
 │                                              │
-│  4. Verify against database                  │
-│     ├─ SUCCESS → return citizen profile     │
-│     └─ FAILURE → retry (max 3)              │
-│         └─ 3 failures → human transfer      │
+│  3. Verify against database                  │
+│     ├─ SUCCESS → return citizen profile      │
+│     └─ FAILURE → retry (max 3)               │
+│         └─ 3 failures → human transfer       │
 │                                              │
 │  Security:                                   │
-│  - Never read back full TC Kimlik           │
+│  - Never read back full TC Kimlik            │
 │  - Mask all PII in logs                      │
 │  - Session auth expires after call ends      │
 └──────────────────────────────────────────────┘
@@ -117,7 +114,7 @@
 ## Out-of-Scope Handling
 
 ### Strategy: 3-Step Graceful Decline
-
+>>>>>>>>>>>>> Aslında bizim burada sağladığımız şeyleri kullanıcıya sunmamız gerekiyor.
 **Step 1 — Acknowledge and clarify:**
 > "Anlıyorum, [konu] hakkında bilgi almak istiyorsunuz."
 

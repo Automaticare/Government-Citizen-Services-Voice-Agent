@@ -4,6 +4,7 @@
 
 ### Problem
 ElevenLabs Workflows use subagent nodes with edge conditions to control conversation flow. When using Custom LLM as the base agent, the interaction between workflow transitions and Custom LLM responses creates challenges.
+>>>>>>>>>>>>>(Bununla alakalı olarak resmi kaynakları incelemek gerekiyor. neler var neler yok diye)
 
 ### What We Tried and What Happened
 
@@ -61,6 +62,8 @@ Our webhook-based auth (200/401) is deterministic. The challenge is integrating 
 - With Custom LLM on Service Router, workflow forward edges to Status Check/Appointment/etc. never triggered
 - With GPT-4o on Service Router, edges trigger reliably
 - Other nodes (Status Check, Appointment, etc.) can use Custom LLM without issues
+>>>>>>>>>>>>> Göbek de yer alan node'lar native llm olmalı. ama uçlardaki node'lar custom llm olabilir.
+>>>>>>>>>>>>> Bu sayfadaki metinlerin tamamı için alakalı sorular oluşturarak eleven-labs'in herhangi bir forumunda sormak lazım. 
 
 #### Workflow backward edges don't trigger with Custom LLM
 - After Status Check (Custom LLM) completes, backward edge "Kullanici baska islem yapmak istiyor" never triggers
@@ -84,3 +87,24 @@ Our webhook-based auth (200/401) is deterministic. The challenge is integrating 
 - Uses Turkish character normalization for matching
 - If not detected, asks clarifying question
 - Same pattern used in status_check for application selection and appointment_cancel
+
+
+>>>>>>>>>>>>> Bizim dil algılama nerede çalışıyor tam olarak? e2e curl testlerini geçtik ama nasıl geçtik tam anlamadım.
+
+>>>>>>>>>>>>> LangGraph gerçekten de bir katma değer sağlıyor mu? Oscar'ın bahsettiği "smt tangible" burada gerçekten de var mı?
+
+>>>>>>>>>>>>> Her node arasında gerekli bağlantılar var mı? burada çok karışık bir yapı gerekmiyor mu? mesela 
+              Her node'un bir diğeri ile bağlı olması gerekmiyor mu?
+
+>>>>>>>>>>>>> Ne kadar ölü kod var? bundan emin olmamız lazım.
+
+>>>>>>>>>>>>> Demo dili ingilizce olacak. E2E Testlerin tamamını ona göre yazmamız gerekiyor.
+
+>>>>>>>>>>>>> aklıma şöyle bir fikir geldi. streamlit tarafında performans ölçüm sonuçlarını zaten biz modele göndereceğiz
+              ek olarak acaba node'lar üzerinde güncelleme yapabilecek bir şey üzerine çalışmak nasıl olur.
+              mesela bir node beklenenden düşük performans veriyor ve buna ithafen Opus aktif olarak iyileştirmede çalışsa.
+
+>>>>>>>>>>>>> Ekstra olarak Crew.ai eklesek overkill mi olur?
+
+>>>>>>>>>>>>> Üzerinde çalıştığımız proje gerçekten de kamu sektöründe bir imkan açabilir mi? ben söyleyim. açamaz.
+              Burada gerçekten de bir karar almamız gerekecek. proje ile devam mı edeceğiz yoksa başka bir iş fikri mi sunacağız?

@@ -1230,6 +1230,37 @@ Allow callers to enter TC Kimlik last 4 digits via phone numpad (DTMF tones) ins
 - [ ] Digits are correctly captured and sent to auth webhook
 - [ ] Fallback to voice input works when numpad not used
 - [ ] Experience feels natural — similar to banking IVR systems
+- **Status:** Blocked — ElevenLabs does not support receiving DTMF input from callers. `play_keypad_touch_tone` only sends tones, cannot receive them.
+
+---
+
+# ISSUE-36: Dead Code Cleanup
+
+## Module
+Code Quality
+
+## Priority
+P2
+
+## Dependencies
+None
+
+## Description
+Identify and remove dead code, unused imports, debug artifacts, and stale references across the codebase. Ensure no orphaned files or unreachable code paths remain.
+
+## Tasks
+- [ ] Scan for unused imports across all Python files
+- [ ] Remove data/last_system_prompt.txt debug logging from server.py
+- [ ] Verify auth_collect.py is fully removed (no stale references)
+- [ ] Check for unreachable code paths in graph.py (e.g., workflow_node routing)
+- [ ] Remove any hardcoded test values or TODO comments
+- [ ] Verify all imports in __init__.py files
+
+## Acceptance Criteria
+- [ ] No unused imports
+- [ ] No debug artifacts in production code
+- [ ] No orphaned files
+- [ ] All tests still pass after cleanup
 
 ---
 

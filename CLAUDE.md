@@ -11,15 +11,15 @@ Government Citizen Services Voice Agent — an AI-powered multilingual voice age
 - **API Bridge:** FastAPI (Custom LLM endpoint for ElevenLabs)
 - **RAG:** Pinecone (vector DB) + OpenAI embeddings
 - **Database:** SQLite (demo) / PostgreSQL (production) via SQLAlchemy ORM
-- **Dashboard:** Streamlit (planned)
+- **Dashboard:** Streamlit
 - **Language:** Python 3.11+
 
 ## Architecture
 ```
 ElevenLabs (platform-native):          LangGraph (custom intelligence):
 ├─ Voice (STT/TTS)                     ├─ Intent classification (GPT-4o)
-├─ Language detection (system tool)     ├─ Multi-step service routing
-├─ Auth gating (workflow dispatch)      ├─ Tool orchestration (API calls)
+├─ Language detection (system tool)    ├─ Multi-step service routing
+├─ Auth gating (workflow dispatch)     ├─ Tool orchestration (API calls)
 └─ Degradation fallback                ├─ Deterministic tool chaining
                                        ├─ Stateless (full history per request)
                                        └─ Prompt versioning
