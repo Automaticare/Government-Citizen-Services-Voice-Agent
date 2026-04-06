@@ -28,6 +28,7 @@ def make_state(**overrides) -> AgentState:
         "citizen_profile": None,
         "current_intent": "unknown",
         "completed_intents": [],
+        "workflow_node": None,
         "prompt_version": "v1.0",
         "language": "tr",
     }
@@ -280,10 +281,20 @@ class TestGraphRouting:
         assert route_by_intent({"current_intent": "fee_inquiry"}) == "faq_answer"
         assert route_by_intent({"current_intent": "unknown"}) == "faq_answer"
 
-    def test_check_pending_intents(self):
-        from agent.graph import check_pending_intents
-        state = make_state(completed_intents=["status_check"], current_intent="status_check")
-        assert check_pending_intents(state) == "__end__"
+    def test_entry_router_with_workflow_node(self):
+        from agent.graph import entry_router
+        state = make_state(workflow_node="status_check")
+        assert entry_router(state) == "status_check"
+
+    def test_entry_router_without_workflow_node(self):
+        from agent.graph import entry_router
+        state = make_state(workflow_node=None)
+        assert entry_router(state) == "intent_classify"
+
+    def test_entry_router_invalid_workflow_node(self):
+        from agent.graph import entry_router
+        state = make_state(workflow_node="nonexistent")
+        assert entry_router(state) == "intent_classify"
 
 
 # --- Full graph flow tests ---

@@ -65,6 +65,9 @@ class AgentState(TypedDict):
     current_intent: Intent
     completed_intents: list[Intent]
 
+    # Workflow routing (set by server.py from ElevenLabs system prompt [NODE:xxx] marker)
+    workflow_node: str | None
+
     # Metadata
     prompt_version: str
     language: str

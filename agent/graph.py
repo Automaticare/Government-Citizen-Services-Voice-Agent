@@ -2,13 +2,13 @@
 LangGraph agent workflow for citizen services.
 
 Graph structure:
-  START → intent_classify → service_router → [service nodes] → END
-                                                    ↓
-                                          (back to intent_classify
-                                           if pending intents remain)
+  START → entry_router → [service nodes] → END
+                 ↓
+         (workflow_node set → direct to node)
+         (workflow_node not set → intent_classify → service_router → node)
 
-ElevenLabs handles: voice (STT/TTS), language detection, auth gating.
-LangGraph handles: intent routing, tool orchestration, RAG, business logic.
+ElevenLabs Workflow handles: routing between conversation phases (auth, service selection).
+LangGraph handles: node-level intelligence (tool chaining, RAG, API orchestration).
 """
 
 from typing import Literal
@@ -32,8 +32,40 @@ from agent.nodes.appointment_cancel import appointment_cancel
 from agent.nodes.document_status import document_status
 
 
+# --- Valid workflow node names (from ElevenLabs [NODE:xxx] markers) ---
+WORKFLOW_NODES = {
+    "service_router",
+    "status_check",
+    "appointment_book",
+    "appointment_list",
+    "appointment_cancel",
+    "document_request",
+    "document_status",
+    "faq_answer",
+    "complaint",
+    "escalate",
+}
+
+
+def entry_router(state: AgentState) -> str:
+    """First routing decision: use workflow node if set, otherwise intent_classify.
+
+    When ElevenLabs workflow sets [NODE:xxx] in system prompt, we skip
+    intent classification and route directly to the target node.
+    This lets ElevenLabs handle high-level routing while LangGraph
+    handles node-level intelligence.
+    """
+    workflow_node = state.get("workflow_node")
+    if workflow_node and workflow_node in WORKFLOW_NODES:
+        return workflow_node
+    return "intent_classify"
+
+
 def route_by_intent(state: AgentState) -> str:
-    """Conditional edge: route to service node based on classified intent."""
+    """Conditional edge: route to service node based on classified intent.
+
+    Only used when workflow_node is not set (fallback / direct API calls).
+    """
     intent = state.get("current_intent", "unknown")
 
     routing = {
@@ -44,29 +76,13 @@ def route_by_intent(state: AgentState) -> str:
         "document_request": "document_request",
         "document_status": "document_status",
         "faq": "faq_answer",
-        "fee_inquiry": "faq_answer",  # Fee inquiries handled via RAG
+        "fee_inquiry": "faq_answer",
         "complaint": "complaint",
         "escalate": "escalate",
-        "unknown": "faq_answer",  # Fallback: try to answer from knowledge base
+        "unknown": "faq_answer",
     }
 
     return routing.get(intent, "faq_answer")
-
-
-def check_pending_intents(state: AgentState) -> Literal["intent_classify", "__end__"]:
-    """After a service node completes, check if there are more intents to handle.
-
-    Multi-intent routing: if the user mentioned multiple needs in one message
-    (e.g., "check status AND book appointment"), the LLM may have classified
-    only the first. After completing a service, we re-route to intent_classify
-    so the LLM can detect remaining intents from conversation context.
-
-    Currently returns __end__ — the next user turn triggers a fresh
-    intent classification via ElevenLabs' next request. True single-turn
-    multi-intent (without user confirmation) requires conversation history
-    analysis, planned for ISSUE-16 (Conversation Context Management).
-    """
-    return "__end__"
 
 
 def build_graph(checkpointer=None):
@@ -91,15 +107,18 @@ def build_graph(checkpointer=None):
     builder.add_node("appointment_cancel", appointment_cancel)
     builder.add_node("document_status", document_status)
 
-    # --- Add edges ---
-    builder.add_edge(START, "intent_classify")
+    # --- Entry point: workflow node or intent classify ---
+    builder.add_conditional_edges(START, entry_router)
+
+    # --- Intent classify fallback path ---
     builder.add_edge("intent_classify", "service_router")
     builder.add_conditional_edges("service_router", route_by_intent)
 
+    # --- All service nodes end after completing ---
     for node in ["status_check", "appointment_book", "appointment_list",
                  "appointment_cancel", "document_request", "document_status",
                  "faq_answer", "complaint", "escalate"]:
-        builder.add_conditional_edges(node, check_pending_intents)
+        builder.add_edge(node, END)
 
     return builder.compile(checkpointer=checkpointer)
 

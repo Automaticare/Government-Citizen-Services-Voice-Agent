@@ -295,7 +295,18 @@ async def chat_completions(request: ChatCompletionRequest):
     # successful auth via workflow dispatch tool. This is checked on
     # EVERY turn so authenticated state persists across the conversation.
     import re
+
+    # Extract workflow node from "Specific goal" in system prompt.
+    # ElevenLabs injects each subagent's additional_prompt as "Specific goal".
+    # We use [NODE:xxx] markers to route directly to the right LangGraph node.
+    workflow_node = None
     if system_prompt_content:
+        node_match = re.search(r'\[NODE:(\w+)\]', system_prompt_content)
+        if node_match:
+            workflow_node = node_match.group(1)
+            logger.info(f"Workflow node detected: {workflow_node}")
+
+        # Extract citizen profile from dynamic variables
         name_match = re.search(r'Vatandasin adi:\s*(\w+)', system_prompt_content)
         ref_match = re.search(r'Basvuru numarasi:\s*([\w-]+)', system_prompt_content)
         status_match = re.search(r'Basvuru durumu:\s*(\w+)', system_prompt_content)
@@ -358,6 +369,9 @@ async def chat_completions(request: ChatCompletionRequest):
         else:
             try:
                 graph_input = {"messages": lc_messages, "language": language}
+
+                if workflow_node:
+                    graph_input["workflow_node"] = workflow_node
 
                 if auth_status != "unauthenticated":
                     graph_input["auth_status"] = auth_status
