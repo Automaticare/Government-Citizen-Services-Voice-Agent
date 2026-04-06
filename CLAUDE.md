@@ -24,9 +24,11 @@ ElevenLabs (platform-native):          LangGraph (custom intelligence):
                                        ├─ Stateless (full history per request)
                                        └─ Prompt versioning
 
-ElevenLabs Workflow (auth):
-  Start → Collect Identity (GPT-4o) → Dispatch tool (webhook auth)
-    → Success: Authenticated Service (Custom LLM / LangGraph)
+ElevenLabs Workflow (auth + pre-auth FAQ):
+  Start → Collect Identity (GPT-4o + native knowledge base for FAQ)
+    → Pre-auth FAQ handled by ElevenLabs native knowledge base (no Custom LLM needed)
+    → Dispatch tool (webhook auth)
+    → Success: Authenticated Service (Custom LLM / LangGraph — RAG, tool chaining, API orchestration)
     → Failure: Auth Retry (GPT-4o) → back to Collect Identity
 
 Single FastAPI server (agent/server.py, port 8080):
@@ -41,7 +43,7 @@ Single FastAPI server (agent/server.py, port 8080):
 ## Project Structure
 ```
 /agent              — LangGraph agent core
-  /nodes            — Graph node implementations (intent_classify, status_check, etc.)
+  /nodes            — Graph node implementations (intent_classify, status_check, appointment_list, appointment_cancel, document_status, etc.)
   /prompts          — Versioned system prompts (v1.0/system_prompt_tr.md, _en.md)
   /tools            — Validators + schemas (tc_kimlik.py, app_ref.py, date_parser.py, schemas.py)
   config.py         — AgentConfig dataclass (incl. custom_llm_url)
@@ -53,9 +55,9 @@ Single FastAPI server (agent/server.py, port 8080):
 /api                — Government backend (mounted into agent/server.py)
   auth.py           — POST /auth/verify/tc-kimlik, /auth/verify/app-ref, /auth/verify/webhook
   handoff.py        — POST /handoff, POST /guest/info
-  models.py         — SQLAlchemy models (Citizen, AuthAuditLog, Appointment, DocumentRequest)
-  seed_data.py      — 23 citizen records + 5 appointments + 3 doc requests seeder
-  services.py       — GET /applications/{ref}, POST /appointments, POST /documents/request, GET /services
+  models.py         — SQLAlchemy models (Citizen, Application, AuthAuditLog, Appointment, DocumentRequest)
+  seed_data.py      — 23 citizen records + 26 applications + 5 appointments + 3 doc requests seeder
+  services.py       — GET /applications/{ref}, GET /applications, POST /appointments, DELETE /appointments/{id}, POST /documents/request, GET /documents/{citizen_id}, GET /services
   server.py         — Standalone FastAPI app (for independent testing)
 /rag                — RAG pipeline
   chunker.py        — Document chunking (header-based + size overlap)
@@ -76,7 +78,9 @@ Single FastAPI server (agent/server.py, port 8080):
 - **Single multilingual agent** with language_presets — one endpoint, auto language detection
 - **KVKK compliance** — PII redaction in all logs, TC Kimlik stored as SHA-256 hash, audit trail with no raw PII
 - **Prompt versioning** tracked per conversation for data-driven optimization
-- **Stateless message passing** — ElevenLabs sends full history each turn, no server-side checkpointer needed
+- **Pre-auth FAQ via ElevenLabs native knowledge base** — platform mastery, no Custom LLM needed
+- **Post-auth operations via Custom LLM / LangGraph** — deterministic tool chaining, RAG, API orchestration
+- **Stateless message passing** — ElevenLabs sends full history each turn, dynamic variables parsed every turn, no server-side checkpointer needed
 - **Graceful degradation** — Level 0: full LangGraph, Level 1: direct OpenAI (circuit breaker after 3 failures, 60s cooldown), Level 2: ElevenLabs native fallback (backup_llm_config)
 - **Sentence-level SSE streaming** — responses split by sentence with delays for TTS processing
 - **STT-friendly auth** — last 4 digits + DOB + father initial instead of full 11-digit TC Kimlik
@@ -92,7 +96,7 @@ Single FastAPI server (agent/server.py, port 8080):
 - System prompts live in versioned files under `/agent/prompts/`
 - Shared node utilities in `agent/nodes/utils.py` (e.g., mark_completed)
 - `load_dotenv()` is called once in `agent/graph.py` — not in individual nodes
-- Tests: `python -m pytest tests/ -v` (178 tests collected)
+- Tests: `python -m pytest tests/ -v` (166+ tests collected)
 - Test DB: in-memory SQLite via conftest.py, audit log cleaned per test
 
 ## User Preferences (for Claude)
@@ -148,18 +152,18 @@ make test-live         # Live API + simulation tests
 - **ISSUE-10:** Knowledge Base — 40 documents (5 categories × 4 doc types × 2 languages), manifest.json
 - **ISSUE-11:** Embedding Pipeline — chunker (219 chunks from 40 docs, min 50 chars), OpenAI text-embedding-3-small, Pinecone serverless index, 5/5 validation queries passing
 - **ISSUE-12:** RAG Integration — faq_answer grounded in Pinecone (no hallucination), status_check chains to RAG for required docs + appeal rights
-- **ISSUE-13:** Mock Government API — Appointment and DocumentRequest DB models, 5 API endpoints, seed data (23 citizens, 5 appointments, 3 doc requests)
-  - **Debt:** Application table needs 1:N separation from Citizen, missing cancel/status endpoints
+- **ISSUE-13:** Mock Government API — Application, Appointment, DocumentRequest DB models, 7 API endpoints, seed data (23 citizens, 26 applications, 5 appointments, 3 doc requests)
+  - **Debt:** Application table 1:N separation — DONE
 - **ISSUE-14:** Tool Calling — Nodes connected to real API via httpx, tool chaining (status → RAG), 15 services tests
-  - **Debt:** Missing appointment_list, appointment_cancel, document_status nodes
+  - **Debt:** appointment_list, appointment_cancel, document_status nodes — DONE
 - **ISSUE-15:** Edge Cases — LLM-based handling (no hardcoded keywords), platform settings, TTS-friendly SSE streaming
 
 ### Auth Workflow (ISSUE-05B) — COMPLETE
-- ElevenLabs Workflow: Start → Collect Identity (GPT-4o) → Dispatch tool (webhook) → Success: Authenticated Service (Custom LLM/LangGraph) / Failure: Auth Retry (GPT-4o) → back to Collect Identity
+- ElevenLabs Workflow: Start → Collect Identity (GPT-4o + native knowledge base for pre-auth FAQ) → Dispatch tool (webhook) → Success: Authenticated Service (Custom LLM / LangGraph) / Failure: Auth Retry (GPT-4o) → back to Collect Identity
 - Auth method: TC Kimlik last 4 digits + DOB + father's name initial (STT-friendly)
 - Webhook: POST /auth/verify/webhook — returns 200 on success, 401 on failure (generic error message, no field-specific info leak)
-- Dynamic variables: first_name, application_ref, application_status injected into system prompt by ElevenLabs, parsed by Custom LLM proxy
-- Post-auth detection: server.py identifies auth artifacts in message history, extracts original user request
+- Dynamic variables: first_name, application_ref, application_status injected into system prompt by ElevenLabs
+- Dynamic variables extracted from system prompt every turn for persistent auth state
 - Workflow configured via dashboard (tool node requires dashboard webhook config), deploy script preserves workflow
 
 ### What Works Now (e2e tested via dashboard):
@@ -170,14 +174,14 @@ make test-live         # Live API + simulation tests
 - ✅ Edge cases — auth refusal, third-party block, robot question, anger → escalate
 - ✅ Complaint recording
 - ✅ Operator transfer (demo mode)
+- ✅ Multi-application status check — lists all citizen applications, user selects for detail
 - ⚠️ Auth + appointment/document — not yet e2e tested but code ready
 - ⚠️ Tool chaining (status → RAG for docs) — works in terminal, not yet e2e tested with auth
 
 ### Technical Debt
-- Application table 1:1 with Citizen (should be 1:N) — ISSUE-13 debt
-- Missing appointment_list, appointment_cancel, document_status nodes — ISSUE-14 debt
 - Buffer words after auth ("kontrol ediyorum") — causes workflow edge issues, deferred
 - Server.py has debug logging (last_system_prompt.txt) — remove before production
+- deploy.py Custom LLM config needs e2e verification after deploy
 
 ### Remaining Issues (not started)
 - **ISSUE-15B:** Twilio Phone Integration

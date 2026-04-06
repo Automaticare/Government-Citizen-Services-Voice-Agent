@@ -541,9 +541,9 @@ Build a mock government services API that simulates real backend systems. The ag
 - Skipped: response delays (unnecessary for demo), rate limiting (overkill)
 
 ### DB Schema Debt (identified post-completion):
-- [ ] Separate Application table from Citizen — current schema is 1:1 (one application per citizen), should be 1:N (multiple applications per citizen with service_type: passport, id_card, etc.)
-- [ ] Add `DELETE /appointments/{appointment_id}` endpoint for cancellation
-- [ ] Add `GET /documents/status/{citizen_id}` endpoint for document request tracking
+- [x] Separate Application table from Citizen — current schema is 1:1 (one application per citizen), should be 1:N (multiple applications per citizen with service_type: passport, id_card, etc.)
+- [x] Add `DELETE /appointments/{appointment_id}` endpoint for cancellation
+- [x] Add `GET /documents/status/{citizen_id}` endpoint for document request tracking
 
 ## Acceptance Criteria
 - [x] All endpoints return structured JSON with realistic data
@@ -581,10 +581,10 @@ Connect the LangGraph agent to the mock government API via tool calling. The age
 - Deferred: confirmation before booking (requires multi-turn state in ISSUE-16)
 
 ### Missing Node Coverage (identified post-completion):
-- [ ] `appointment_list` node — call GET /appointments/{citizen_id} to show existing appointments
-- [ ] `appointment_cancel` node — call DELETE /appointments/{id} to cancel
-- [ ] `document_status` node — call GET /documents/status/{citizen_id} to check request status
-- [ ] Update intent_classify to support: appointment_list, appointment_cancel, document_status intents
+- [x] `appointment_list` node — call GET /appointments/{citizen_id} to show existing appointments
+- [x] `appointment_cancel` node — call DELETE /appointments/{id} to cancel
+- [x] `document_status` node — call GET /documents/status/{citizen_id} to check request status
+- [x] Update intent_classify to support: appointment_list, appointment_cancel, document_status intents
 
 ## Acceptance Criteria
 - [x] Nodes call real API endpoints when server is available
