@@ -37,7 +37,7 @@ This project builds an always-on voice agent that handles citizen inquiries auto
                      ┌────────────────┐          ┌──────────────────┐      ┌──────────────────┐
                      │  Gov Backend   │          │    Pinecone      │      │   Streamlit      │
                      │  (FastAPI)     │          │    Vector Store   │      │   Dashboard      │
-                     │                │          │   (planned)      │      │   (planned)      │
+                     │                │          │                  │      │   (planned)      │
                      │ - /auth/verify │          │                  │      │                  │
                      │ - /handoff     │          │  - Gov FAQs      │      │ - Call Volume    │
                      │ - /guest/info  │          │  - Regulations   │      │ - Auth Metrics   │
@@ -60,9 +60,8 @@ The brain of the system. A stateful, multi-step agent built with LangGraph that 
 
 Key design decisions:
 - **Graph-based architecture** over linear chains — allows conditional branching, parallel tool calls, and dynamic re-routing based on conversation state
-- **State persistence** across turns — MemorySaver checkpointer keyed by conversation_id, the agent remembers everything from the current call without redundant re-processing
-- **Streaming responses** to ElevenLabs — token-by-token SSE output to minimize perceived latency and keep the conversation feeling natural
-- **Buffer words** — "Bir saniye bakiyorum... " sent before LangGraph starts processing, keeping the conversation natural during 1-3s LLM response time
+- **Stateless message passing** — ElevenLabs sends full conversation history each turn, no server-side persistence needed
+- **Streaming responses** to ElevenLabs — sentence-level SSE output with TTS-friendly delays for natural voice delivery
 - **Deterministic tool chaining** — status "additional_docs_needed" auto-triggers document lookup, "rejected" auto-generates appeal guidance. This is what ElevenLabs native agents can't guarantee
 - **System tool calls** — escalate node returns `transfer_to_number` in OpenAI function call format, ElevenLabs executes the actual phone transfer
 
@@ -84,8 +83,8 @@ The system degrades gracefully across three levels, ensuring citizens always get
 
 The `/health` endpoint reports current degradation level and consecutive failure count for monitoring.
 
-### 5. RAG Knowledge Base (planned)
-A retrieval-augmented generation pipeline that gives the agent access to government service documentation. Built with Pinecone vector store and OpenAI embeddings.
+### 5. RAG Knowledge Base
+A retrieval-augmented generation pipeline that gives the agent access to government service documentation. Pre-auth FAQ handled by ElevenLabs native knowledge base. Post-auth tool chaining uses Pinecone vector store and OpenAI embeddings for context-aware document retrieval.
 
 Coverage includes:
 - Frequently asked questions across 5+ service categories
@@ -119,8 +118,8 @@ A Streamlit-based monitoring dashboard that provides real-time visibility into a
 | Agent Framework | LangGraph | Stateful graph-based workflows, better than linear chains for complex multi-step conversations |
 | LLM | OpenAI GPT-4o-mini | Reliable function calling, strong multilingual performance, fast for intent classification |
 | Voice-Agent Bridge | FastAPI | Async streaming support, low latency, lightweight |
-| Vector Database | Pinecone (planned) | Managed service, metadata filtering, fast semantic search |
-| Embeddings | OpenAI text-embedding-3-small (planned) | Good balance of quality and cost for multilingual documents |
+| Vector Database | Pinecone | Managed service, metadata filtering, fast semantic search |
+| Embeddings | OpenAI text-embedding-3-small | Good balance of quality and cost for multilingual documents |
 | Database | SQLite (demo) / PostgreSQL (production) | SQLAlchemy ORM for easy migration between demo and production |
 | Dashboard | Streamlit (planned) | Fast to build, good enough for monitoring, familiar to data teams |
 
@@ -220,11 +219,8 @@ cp .env.example .env
 # Seed the citizen database (23 sample records)
 python -m api.seed_data
 
-# Start the Government Backend API (port 8001)
-uvicorn api.server:app --reload --port 8001
-
-# Start the Custom LLM server (port 8000) — LangGraph proxy for ElevenLabs
-uvicorn agent.server:app --reload --port 8000
+# Start the server (single server — gov API mounted into agent server)
+uvicorn agent.server:app --reload --port 8080
 
 # Deploy agent to ElevenLabs (set CUSTOM_LLM_URL for voice integration)
 python -m agent.deploy --dry-run        # Preview config
@@ -263,18 +259,19 @@ Government-Citizen-Services-Voice-Agent/
 │   └── tools/                         # Validators
 │       ├── tc_kimlik.py               # TC Kimlik checksum validator + masking
 │       └── app_ref.py                 # Application reference format validator
-├── api/                               # Government backend (FastAPI, port 8001)
-│   ├── server.py                      # FastAPI app with auth + handoff routes
-│   ├── auth.py                        # POST /auth/verify/tc-kimlik, /auth/verify/app-ref
+├── api/                               # Government backend (mounted into agent/server.py)
+│   ├── server.py                      # Standalone FastAPI app (for independent testing)
+│   ├── auth.py                        # POST /auth/verify/tc-kimlik, /auth/verify/app-ref, /auth/verify/webhook
 │   ├── handoff.py                     # POST /handoff, POST /guest/info
-│   ├── models.py                      # SQLAlchemy models (Citizen, AuthAuditLog)
-│   └── seed_data.py                   # 23 citizen records seeder
+│   ├── services.py                    # GET /applications, POST /appointments, POST /documents/request
+│   ├── models.py                      # SQLAlchemy models (Citizen, Application, AuthAuditLog, Appointment, DocumentRequest)
+│   └── seed_data.py                   # 23 citizens + 26 applications + 5 appointments + 3 doc requests
 ├── dashboard/                         # Streamlit analytics app (planned)
 ├── data/                              # citizens.db — SQLite (gitignored)
 ├── docs/
 │   ├── auth_flow.md                   # Authentication state diagram
 │   └── conversation_flow.md           # Conversation flow documentation
-├── tests/                             # 116 tests
+├── tests/                             # 166+ tests
 │   ├── conftest.py                    # Shared test DB setup, per-test audit log cleanup
 │   ├── test_agent_connection.py       # Agent config & Custom LLM config tests
 │   ├── test_auth.py                   # Authentication flow tests (20 tests)

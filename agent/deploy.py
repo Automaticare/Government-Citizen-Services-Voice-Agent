@@ -56,18 +56,25 @@ def build_agent_config(version: str, custom_llm_url: str | None = None) -> dict:
     from agent.tools.schemas import get_system_tool_configs
     system_tools = get_system_tool_configs()
 
-    # Base agent uses native LLM (GPT-4o) — workflow subagents inherit this.
-    # Custom LLM (LangGraph) is only used in the Authenticated Service node
-    # via workflow override, NOT as the base agent LLM.
-    # This is critical: if base agent is Custom LLM, workflow subagents
-    # bypass the auth flow and go straight to LangGraph.
+    # Base agent LLM: Custom LLM when URL is configured, GPT-4o otherwise.
+    # Workflow subagent nodes (Collect Identity, Auth Retry) override to
+    # GPT-4o via dashboard — they handle auth credential collection.
+    # Authenticated Service node inherits Custom LLM for LangGraph intelligence.
     prompt_config = {
         "prompt": system_prompt_tr,
-        "llm": "gpt-4o",
         "temperature": 0.7,
         "max_tokens": 5000,
         "tools": system_tools,
     }
+
+    if custom_llm_url:
+        prompt_config["llm"] = "custom_llm"
+        prompt_config["custom_llm"] = {
+            "url": custom_llm_url,
+            "model": "langgraph-citizen-agent",
+        }
+    else:
+        prompt_config["llm"] = "gpt-4o"
 
     # Timeout message when max duration is reached
     MAX_DURATION_MSG_TR = ("Gorusme suresi doldu. Baska bir konuda yardima ihtiyaciniz olursa "
