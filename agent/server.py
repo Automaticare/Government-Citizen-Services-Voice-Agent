@@ -382,7 +382,10 @@ async def chat_completions(request: ChatCompletionRequest):
 
                 # Step 1: LangGraph determines intent, runs tools, gets context
                 # (no LLM streaming here — just routing + tool calls)
+                import time as _time
+                _start = _time.time()
                 result = await graph.ainvoke(graph_input)
+                _elapsed_ms = int((_time.time() - _start) * 1000)
 
                 final_messages = result.get("messages", [])
                 if not final_messages:
@@ -426,6 +429,25 @@ async def chat_completions(request: ChatCompletionRequest):
                                     await asyncio.sleep(0.08)
 
                 _cb_record_success()
+
+                # Log analytics
+                try:
+                    from api.models import ConversationLog, SessionLocal
+                    _db = SessionLocal()
+                    _db.add(ConversationLog(
+                        conversation_id=conversation_id,
+                        intent=result.get("current_intent", ""),
+                        workflow_node=workflow_node or "",
+                        auth_status=auth_status,
+                        citizen_id=citizen_profile.get("citizen_id") if citizen_profile else None,
+                        language=language,
+                        message_count=len(request.messages),
+                        response_time_ms=_elapsed_ms,
+                    ))
+                    _db.commit()
+                    _db.close()
+                except Exception as _e:
+                    logger.warning(f"Analytics log failed: {_e}")
 
             except Exception as e:
                 logger.error(f"Graph execution error: {e}")

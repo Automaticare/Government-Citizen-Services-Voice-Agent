@@ -109,6 +109,23 @@ class DocumentRequest(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
+class ConversationLog(Base):
+    """Analytics log for every Custom LLM request."""
+
+    __tablename__ = "conversation_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    conversation_id = Column(String, nullable=False, index=True)
+    intent = Column(String, nullable=True)  # status_check, appointment_book, faq, etc.
+    workflow_node = Column(String, nullable=True)  # from [NODE:xxx] marker
+    auth_status = Column(String, nullable=False, default="unauthenticated")
+    citizen_id = Column(Integer, nullable=True)
+    language = Column(String, nullable=False, default="tr")
+    message_count = Column(Integer, nullable=False, default=0)
+    response_time_ms = Column(Integer, nullable=True)  # LangGraph processing time
+
+
 def init_db():
     """Create all tables if they don't exist."""
     Base.metadata.create_all(engine)
