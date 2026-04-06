@@ -54,9 +54,12 @@ def entry_router(state: AgentState) -> str:
     intent classification and route directly to the target node.
     This lets ElevenLabs handle high-level routing while LangGraph
     handles node-level intelligence.
+
+    Special case: service_router means "figure out what the user wants"
+    — route to intent_classify so LLM can determine from conversation history.
     """
     workflow_node = state.get("workflow_node")
-    if workflow_node and workflow_node in WORKFLOW_NODES:
+    if workflow_node and workflow_node in WORKFLOW_NODES and workflow_node != "service_router":
         return workflow_node
     return "intent_classify"
 
