@@ -39,6 +39,7 @@ Important rules:
 - If the user is angry or using ACTUAL profanity/swear words, classify as "escalate"
 - If the user simply changes topic ("bırak onu, şikayet etmek istiyorum"), classify based on the NEW topic, not frustration
 - Topic change phrases like "bırak", "geç onu", "tamam onu boşver" are NOT anger — they just mean the user wants to move on
+- If the user's request does not clearly map to ONE specific service, classify as "faq" so the agent can ask a clarifying question. Do NOT guess which service the user wants
 - If unclear, respond with "faq"
 
 Respond with ONLY the intent name, nothing else."""
