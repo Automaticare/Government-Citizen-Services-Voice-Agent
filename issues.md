@@ -1230,3 +1230,167 @@ Allow callers to enter TC Kimlik last 4 digits via phone numpad (DTMF tones) ins
 - [ ] Digits are correctly captured and sent to auth webhook
 - [ ] Fallback to voice input works when numpad not used
 - [ ] Experience feels natural — similar to banking IVR systems
+
+---
+
+# ISSUE-30: LLM-Powered Dashboard Insights
+
+## Module
+Analytics Dashboard
+
+## Priority
+P1
+
+## Dependencies
+ISSUE-19, ISSUE-20
+
+## Description
+Use a powerful LLM (GPT-4o / Claude) to analyze dashboard metrics periodically and generate actionable recommendations. Transforms the dashboard from a metric display into a decision support system.
+
+**FDE impact:** No competitor does this — most dashboards show numbers, ours tells you what to do about them.
+
+## Tasks
+- [ ] Build insight generation endpoint — sends aggregated metrics to LLM, returns recommendations
+- [ ] Implement periodic analysis (cron-style or on-demand)
+- [ ] Display insights in dashboard with timestamp and confidence
+- [ ] Example insights: "Escalation rate increased 40% this week, mostly after status_check. Review status check responses." or "FAQ about passport documents has 3x more queries — consider adding more detail to knowledge base."
+
+## Acceptance Criteria
+- [ ] LLM generates actionable, specific insights from real metrics
+- [ ] Insights are displayed in dashboard with clear formatting
+- [ ] Recommendations are business-focused, not technical jargon
+
+---
+
+# ISSUE-31: A/B Testing Framework
+
+## Module
+Analytics Dashboard
+
+## Priority
+P2
+
+## Dependencies
+ISSUE-19
+
+## Description
+Enable comparison of different prompt versions, LLM models, or conversation strategies. Track resolution rate, response time, and escalation rate per variant. Data-driven optimization for voice agent performance.
+
+## Tasks
+- [ ] Add variant tracking to ConversationLog (prompt_version, model_name fields)
+- [ ] Dashboard A/B comparison view — side-by-side metrics per variant
+- [ ] Statistical significance indicator
+- [ ] Example: "GPT-4o prompt v1.0 vs v1.1: resolution rate 85% vs 92%, p-value 0.03"
+
+## Acceptance Criteria
+- [ ] Variant metrics tracked per conversation
+- [ ] Dashboard shows side-by-side comparison with key metrics
+- [ ] Clear recommendation on which variant performs better
+
+---
+
+# ISSUE-32: Sentiment Tracking
+
+## Module
+Analytics Dashboard
+
+## Priority
+P1
+
+## Dependencies
+ISSUE-19
+
+## Description
+Analyze conversation sentiment in real-time. Track how citizens' mood changes during the call — started angry, ended satisfied. Display sentiment trends in dashboard.
+
+## Tasks
+- [ ] Add sentiment analysis to each conversation turn (LLM-based or lightweight model)
+- [ ] Store sentiment per conversation in ConversationLog
+- [ ] Dashboard: sentiment distribution chart, sentiment trend over time
+- [ ] Dashboard: "citizen satisfaction proxy" — percentage of conversations ending positive
+
+## Acceptance Criteria
+- [ ] Sentiment tracked per conversation
+- [ ] Dashboard shows sentiment distribution and trends
+- [ ] Actionable: identifies which intents/flows produce negative sentiment
+
+---
+
+# ISSUE-33: Conversation Flow Visualization
+
+## Module
+Analytics Dashboard
+
+## Priority
+P1
+
+## Dependencies
+ISSUE-19
+
+## Description
+Visualize conversation paths as flow diagrams. Show the most common paths citizens take (Auth → Status → Appointment), drop-off points, and bottlenecks.
+
+## Tasks
+- [ ] Track node transitions per conversation
+- [ ] Build Sankey diagram or flow chart in dashboard
+- [ ] Identify most common paths and drop-off points
+- [ ] Highlight bottleneck nodes (high response time or escalation)
+
+## Acceptance Criteria
+- [ ] Flow visualization shows real conversation paths
+- [ ] Most common paths clearly visible
+- [ ] Drop-off and bottleneck nodes identified
+
+---
+
+# ISSUE-34: Knowledge Gap Detection
+
+## Module
+Analytics Dashboard
+
+## Priority
+P1
+
+## Dependencies
+ISSUE-12, ISSUE-19
+
+## Description
+Automatically detect questions that the knowledge base cannot answer well. Collect low-score RAG queries and present them as content improvement recommendations.
+
+## Tasks
+- [ ] Log RAG query scores in ConversationLog or separate table
+- [ ] Dashboard: "Knowledge Gaps" section — queries with low relevance scores
+- [ ] Group similar unanswered queries by topic
+- [ ] Generate content recommendations: "Add more detail about ehliyet yenileme — 12 queries, avg score 0.25"
+
+## Acceptance Criteria
+- [ ] Low-score RAG queries collected and displayed
+- [ ] Grouped by topic for easy action
+- [ ] Content team can see exactly what to add
+
+---
+
+# ISSUE-35: Peak Hour Prediction & Cost Optimizer
+
+## Module
+Analytics Dashboard
+
+## Priority
+P2
+
+## Dependencies
+ISSUE-19, ISSUE-20
+
+## Description
+Predict peak call hours from historical data and calculate per-intent cost breakdown. Both sections show placeholder UI with "production data needed" note until sufficient data is collected.
+
+## Tasks
+- [ ] Dashboard: Peak hour prediction section with placeholder chart
+- [ ] Dashboard: Cost per intent breakdown with placeholder data
+- [ ] Add note: "Requires 30+ days of production data for accurate predictions"
+- [ ] Design data collection structure for future activation
+
+## Acceptance Criteria
+- [ ] UI sections visible in dashboard with professional layout
+- [ ] Clear "production data needed" messaging
+- [ ] Data structure ready for future activation
