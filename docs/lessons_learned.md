@@ -51,3 +51,36 @@ Our webhook-based auth (200/401) is deterministic. The challenge is integrating 
 - How to trigger workflow node transitions from Custom LLM? Is `notify_condition_X_met` the correct mechanism, and if so, what SSE format does it require?
 - Can Custom LLM and workflow dispatch tool coexist? The dispatch tool works with native LLMs but we couldn't get it to fire when Custom LLM handles the conversation.
 - Is there an alternative pattern for auth gating with Custom LLM that doesn't require workflow transitions? (e.g., using dynamic variables updated by webhook tool assignments)
+
+---
+
+### Workflow Routing with Custom LLM (Session 2 Findings)
+
+#### GPT-4o Service Router enables workflow edge transitions
+- Service Router node MUST use GPT-4o (native LLM), not Custom LLM
+- With Custom LLM on Service Router, workflow forward edges to Status Check/Appointment/etc. never triggered
+- With GPT-4o on Service Router, edges trigger reliably
+- Other nodes (Status Check, Appointment, etc.) can use Custom LLM without issues
+
+#### Workflow backward edges don't trigger with Custom LLM
+- After Status Check (Custom LLM) completes, backward edge "Kullanici baska islem yapmak istiyor" never triggers
+- Workaround: LangGraph always runs intent_classify — if user changes topic, intent_classify routes to correct node regardless of workflow state
+- This means workflow provides visual routing structure, but actual topic-change routing is handled by LangGraph
+
+#### [NODE:xxx] markers for workflow-LangGraph integration
+- Each workflow subagent node's additional prompt contains [NODE:xxx] marker
+- server.py parses this from system prompt's "Specific goal" section
+- Enables LangGraph to know which workflow node is active
+- Currently used for logging; entry_router always falls back to intent_classify
+
+#### citizen_id resolution via dynamic variables
+- Dispatch tool assignments extract citizen_id from webhook response
+- {{citizen_id}} injected into all Custom LLM node prompts
+- server.py parses "Vatandas ID: X" from system prompt
+- Critical: self-referencing HTTP calls (server calling itself) cause deadlock in async FastAPI
+
+#### Smart service type detection
+- appointment_book and document_request detect service type from conversation history
+- Uses Turkish character normalization for matching
+- If not detected, asks clarifying question
+- Same pattern used in status_check for application selection and appointment_cancel

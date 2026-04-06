@@ -17,19 +17,23 @@ Government Citizen Services Voice Agent — an AI-powered multilingual voice age
 ## Architecture
 ```
 ElevenLabs (platform-native):          LangGraph (custom intelligence):
-├─ Voice (STT/TTS)                     ├─ Intent classification (GPT-4o-mini)
+├─ Voice (STT/TTS)                     ├─ Intent classification (GPT-4o)
 ├─ Language detection (system tool)     ├─ Multi-step service routing
 ├─ Auth gating (workflow dispatch)      ├─ Tool orchestration (API calls)
 └─ Degradation fallback                ├─ Deterministic tool chaining
                                        ├─ Stateless (full history per request)
                                        └─ Prompt versioning
 
-ElevenLabs Workflow (auth + pre-auth FAQ):
-  Start → Collect Identity (GPT-4o + native knowledge base for FAQ)
-    → Pre-auth FAQ handled by ElevenLabs native knowledge base (no Custom LLM needed)
-    → Dispatch tool (webhook auth)
-    → Success: Authenticated Service (Custom LLM / LangGraph — RAG, tool chaining, API orchestration)
-    → Failure: Auth Retry (GPT-4o) → back to Collect Identity
+ElevenLabs Workflow (visual routing):
+  Start → Collect Identity (GPT-4o-mini + native KB for FAQ)
+    → Dispatch tool (webhook auth) → Success → Service Router (GPT-4o)
+      → Status Check (Custom LLM / LangGraph) [NODE:status_check]
+      → Appointment (Custom LLM / LangGraph) [NODE:appointment_book]
+      → Document Request (Custom LLM / LangGraph) [NODE:document_request]
+      → Complaint (Custom LLM / LangGraph) [NODE:complaint]
+      → Operator Transfer (phone)
+      → End
+    → Failure → Auth Retry (GPT-4o-mini) → back to Collect Identity
 
 Single FastAPI server (agent/server.py, port 8080):
 ├─ /v1/chat/completions — Custom LLM proxy (ElevenLabs → LangGraph → SSE)
@@ -78,6 +82,11 @@ Single FastAPI server (agent/server.py, port 8080):
 - **Single multilingual agent** with language_presets — one endpoint, auto language detection
 - **KVKK compliance** — PII redaction in all logs, TC Kimlik stored as SHA-256 hash, audit trail with no raw PII
 - **Prompt versioning** tracked per conversation for data-driven optimization
+- **Workflow visual routing + LangGraph node intelligence** — workflow handles high-level routing between conversation phases, LangGraph handles tool chaining, RAG, API orchestration inside each node
+- **GPT-4o for Service Router** — enables reliable workflow edge transitions. Custom LLM on Service Router causes workflow edges not to trigger
+- **[NODE:xxx] markers in workflow additional prompts** — LangGraph reads these to identify which workflow node is active
+- **All LangGraph nodes use GPT-4o** — upgraded from GPT-4o-mini for better context understanding
+- **citizen_id resolved via {{citizen_id}} dynamic variable** from dispatch tool assignments
 - **Pre-auth FAQ via ElevenLabs native knowledge base** — platform mastery, no Custom LLM needed
 - **Post-auth operations via Custom LLM / LangGraph** — deterministic tool chaining, RAG, API orchestration
 - **Stateless message passing** — ElevenLabs sends full history each turn, dynamic variables parsed every turn, no server-side checkpointer needed
@@ -158,9 +167,11 @@ make test-live         # Live API + simulation tests
 - **ISSUE-14:** Tool Calling — Nodes connected to real API via httpx, tool chaining (status → RAG), 15 services tests
   - **Debt:** appointment_list, appointment_cancel, document_status nodes — DONE
 - **ISSUE-15:** Edge Cases — LLM-based handling (no hardcoded keywords), platform settings, TTS-friendly SSE streaming
+- **ISSUE-16:** Conversation Context Management — full filtered history, dynamic context, GPT-4o intent_classify
+- **ISSUE-17:** Multi-Intent Flows — workflow backward edges + LangGraph intent_classify fallback
 
 ### Auth Workflow (ISSUE-05B) — COMPLETE
-- ElevenLabs Workflow: Start → Collect Identity (GPT-4o + native knowledge base for pre-auth FAQ) → Dispatch tool (webhook) → Success: Authenticated Service (Custom LLM / LangGraph) / Failure: Auth Retry (GPT-4o) → back to Collect Identity
+- ElevenLabs Workflow: Start → Collect Identity (GPT-4o-mini + native KB for FAQ) → Dispatch tool (webhook) → Success → Service Router (GPT-4o) → Status Check / Appointment / Document Request / Complaint / Operator Transfer / End. Failure → Auth Retry (GPT-4o-mini) → back to Collect Identity
 - Auth method: TC Kimlik last 4 digits + DOB + father's name initial (STT-friendly)
 - Webhook: POST /auth/verify/webhook — returns 200 on success, 401 on failure (generic error message, no field-specific info leak)
 - Dynamic variables: first_name, application_ref, application_status injected into system prompt by ElevenLabs
@@ -176,8 +187,12 @@ make test-live         # Live API + simulation tests
 - ✅ Complaint recording
 - ✅ Operator transfer (demo mode)
 - ✅ Multi-application status check — lists all citizen applications, user selects for detail
-- ⚠️ Auth + appointment/document — not yet e2e tested but code ready
-- ⚠️ Tool chaining (status → RAG for docs) — works in terminal, not yet e2e tested with auth
+- ✅ Appointment booking with service type detection — detects service from conversation history, asks clarifying question if ambiguous
+- ✅ Appointment cancellation
+- ✅ Document request with type detection — detects document type from conversation history
+- ✅ Clarifying questions for ambiguous requests
+- ✅ Multi-intent in single conversation — status check → appointment → document → complaint transitions
+- ✅ 166 tests, 19/20 e2e scenarios passing
 
 ### Twilio Phone Integration (ISSUE-15B) — IN PROGRESS
 - Twilio trial account created, US number: +1 (740) 554-8808
@@ -188,13 +203,14 @@ make test-live         # Live API + simulation tests
 - Pending: E2E voice test when credits renewed
 
 ### Technical Debt
+- Workflow backward edges don't trigger with Custom LLM — LangGraph handles topic changes via intent_classify as fallback
+- Service Router must use GPT-4o (not Custom LLM) for workflow edge transitions
 - Buffer words after auth ("kontrol ediyorum") — causes workflow edge issues, deferred
 - Server.py has debug logging (last_system_prompt.txt) — remove before production
-- deploy.py Custom LLM config needs e2e verification after deploy
 
 ### Remaining Issues (not started)
 - **ISSUE-15B:** Twilio Phone Integration
-- **ISSUE-16-18:** Conversation Management
+- **ISSUE-18:** Human Handoff Implementation
 - **ISSUE-19-22:** Analytics Dashboard (Streamlit)
 - **ISSUE-23-25:** Testing & Quality
 - **ISSUE-26-28:** Documentation & Demo

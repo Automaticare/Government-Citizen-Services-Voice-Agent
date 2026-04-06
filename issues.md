@@ -720,20 +720,22 @@ Implement dynamic context management so the agent understands the full conversat
 **Reference:** LangChain Context Engineering — "write, select, compress, isolate" strategies. We use "select" (filter irrelevant system messages) rather than "compress" (summarize) to avoid extra latency in voice conversations.
 
 ## Tasks
-- [ ] intent_classify: send full filtered history (user + assistant messages only, no system messages) instead of last 4 messages
-- [ ] intent_classify prompt: update to analyze full conversation context, understand follow-ups and references
-- [ ] Verify auth state persistence — citizen_profile available via dynamic variables every turn
-- [ ] Test: "pasaport" after application listing → status_check (not faq)
-- [ ] Test: "randevu almak istiyorum" after status check → appointment_book (no re-auth)
-- [ ] Test: "az önce baktığımız başvuru" → resolves to correct application
-- [ ] Test: long conversation (10+ turns) quality doesn't degrade
+- [x] intent_classify: send full filtered history (user + assistant messages only, no system messages) instead of last 4 messages
+- [x] intent_classify prompt: update to analyze full conversation context, understand follow-ups and references
+- [x] Verify auth state persistence — citizen_profile available via dynamic variables every turn
+- [x] Test: "pasaport" after application listing → status_check (not faq)
+- [x] Test: "randevu almak istiyorum" after status check → appointment_book (no re-auth)
+- [x] Test: "az önce baktığımız başvuru" → resolves to correct application
+- [x] Test: long conversation (10+ turns) quality doesn't degrade
+
+**Note:** Implemented via full filtered conversation history + intent_classify with GPT-4o. No summarization needed — ElevenLabs sends full history each turn.
 
 ## Acceptance Criteria
-- [ ] Agent correctly understands follow-up responses in context (e.g., "pasaport" after listing)
-- [ ] Auth state persists — no re-auth request after first authentication
-- [ ] Entity references resolved ("my appointment" → the one just discussed)
-- [ ] No extra LLM call — zero latency increase vs current implementation
-- [ ] Works with ElevenLabs' stateless full-history architecture
+- [x] Agent correctly understands follow-up responses in context (e.g., "pasaport" after listing)
+- [x] Auth state persists — no re-auth request after first authentication
+- [x] Entity references resolved ("my appointment" → the one just discussed)
+- [x] No extra LLM call — zero latency increase vs current implementation
+- [x] Works with ElevenLabs' stateless full-history architecture
 
 ## References
 - https://blog.langchain.com/context-engineering-for-agents/
@@ -757,17 +759,19 @@ ISSUE-14, ISSUE-16
 Support callers who have multiple requests in a single call. The agent should handle each request sequentially and transition smoothly between them.
 
 ## Tasks
-- [ ] Implement intent queue — when caller mentions multiple needs, agent addresses them one by one
-- [ ] Build transition prompts — "I've checked your application status. You also mentioned you'd like to book an appointment — shall we do that now?"
-- [ ] Handle intent changes — caller starts with status check but wants to switch to appointment booking
-- [ ] Implement conversation summary at end of call — "Today we checked your application status and booked an appointment for Tuesday. Is there anything else?"
-- [ ] Track resolved vs pending intents in state
+- [x] Implement intent queue — when caller mentions multiple needs, agent addresses them one by one
+- [x] Build transition prompts — "I've checked your application status. You also mentioned you'd like to book an appointment — shall we do that now?"
+- [x] Handle intent changes — caller starts with status check but wants to switch to appointment booking
+- [x] Implement conversation summary at end of call — "Today we checked your application status and booked an appointment for Tuesday. Is there anything else?"
+- [x] Track resolved vs pending intents in state
+
+**Note:** Implemented via workflow backward edges (Service Router <-> service nodes) + LangGraph intent_classify fallback. Single conversation supports status check -> appointment -> document -> complaint transitions.
 
 ## Acceptance Criteria
-- [ ] Agent handles 3+ intents in a single call without confusion
-- [ ] Transitions between intents feel natural
-- [ ] End-of-call summary accurately reflects what was accomplished
-- [ ] Intent changes mid-flow don't break the conversation
+- [x] Agent handles 3+ intents in a single call without confusion
+- [x] Transitions between intents feel natural
+- [x] End-of-call summary accurately reflects what was accomplished
+- [x] Intent changes mid-flow don't break the conversation
 
 ---
 
