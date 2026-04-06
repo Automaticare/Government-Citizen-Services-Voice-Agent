@@ -15,7 +15,10 @@ from langchain_core.messages import AnyMessage
 Intent = Literal[
     "status_check",
     "appointment_book",
+    "appointment_list",
+    "appointment_cancel",
     "document_request",
+    "document_status",
     "faq",
     "fee_inquiry",
     "complaint",

@@ -17,8 +17,11 @@ INTENT_SYSTEM_PROMPT = """You are an intent classifier for a government citizen 
 Analyze the user's latest message and classify their intent into exactly ONE of these categories:
 
 - status_check: User wants to check their own application status
-- appointment_book: User wants to book, change, or cancel an appointment
-- document_request: User wants to request an official document
+- appointment_book: User wants to book a NEW appointment
+- appointment_list: User wants to VIEW or LIST their existing appointments
+- appointment_cancel: User wants to CANCEL an existing appointment
+- document_request: User wants to request a NEW official document
+- document_status: User wants to check the status of an existing document request
 - faq: User has a general question about services, requirements, procedures, OR any of the following edge cases:
   - User refuses to provide identity ("kimliğimi vermek istemiyorum", "I don't want to give my ID")
   - User asks about someone else's application ("arkadaşımın başvurusu", "my friend's application")
@@ -63,7 +66,8 @@ def intent_classify(state: AgentState) -> dict:
     raw_intent = response.content.strip().lower()
 
     valid_intents: list[Intent] = [
-        "status_check", "appointment_book", "document_request",
+        "status_check", "appointment_book", "appointment_list",
+        "appointment_cancel", "document_request", "document_status",
         "faq", "fee_inquiry", "complaint", "escalate",
     ]
 

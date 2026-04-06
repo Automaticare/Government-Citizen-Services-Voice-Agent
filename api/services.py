@@ -285,6 +285,41 @@ def get_appointments(citizen_id: int, db: Session = Depends(get_db)):
     ]
 
 
+@router.delete("/appointments/{appointment_id}")
+def cancel_appointment(appointment_id: int, db: Session = Depends(get_db)):
+    """Cancel a confirmed appointment."""
+    appointment = db.query(Appointment).filter(Appointment.id == appointment_id).first()
+
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    if appointment.status != "confirmed":
+        raise HTTPException(status_code=409, detail=f"Cannot cancel appointment with status '{appointment.status}'")
+
+    appointment.status = "cancelled"
+    db.commit()
+
+    logger.info(f"Appointment cancelled | id={appointment_id}")
+
+    return {"message": "Appointment cancelled successfully", "appointment_id": appointment_id}
+
+
+@router.get("/documents/{citizen_id}", response_model=list[DocumentRequestResponse])
+def get_document_requests(citizen_id: int, db: Session = Depends(get_db)):
+    """Get all document requests for a citizen."""
+    docs = db.query(DocumentRequest).filter(DocumentRequest.citizen_id == citizen_id).all()
+
+    return [
+        DocumentRequestResponse(
+            request_ref=d.request_ref,
+            document_type=d.document_type,
+            status=d.status,
+            estimated_days=d.estimated_days,
+        )
+        for d in docs
+    ]
+
+
 @router.post("/documents/request", response_model=DocumentRequestResponse)
 def request_document(request: DocumentRequestCreate, db: Session = Depends(get_db)):
     """Request preparation of an official document."""

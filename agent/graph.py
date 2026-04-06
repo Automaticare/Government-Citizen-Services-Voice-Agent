@@ -27,6 +27,9 @@ from agent.nodes.document_request import document_request
 from agent.nodes.faq_answer import faq_answer
 from agent.nodes.complaint import complaint
 from agent.nodes.escalate import escalate
+from agent.nodes.appointment_list import appointment_list
+from agent.nodes.appointment_cancel import appointment_cancel
+from agent.nodes.document_status import document_status
 
 
 def route_by_intent(state: AgentState) -> str:
@@ -36,7 +39,10 @@ def route_by_intent(state: AgentState) -> str:
     routing = {
         "status_check": "status_check",
         "appointment_book": "appointment_book",
+        "appointment_list": "appointment_list",
+        "appointment_cancel": "appointment_cancel",
         "document_request": "document_request",
+        "document_status": "document_status",
         "faq": "faq_answer",
         "fee_inquiry": "faq_answer",  # Fee inquiries handled via RAG
         "complaint": "complaint",
@@ -81,13 +87,17 @@ def build_graph(checkpointer=None):
     builder.add_node("faq_answer", faq_answer)
     builder.add_node("complaint", complaint)
     builder.add_node("escalate", escalate)
+    builder.add_node("appointment_list", appointment_list)
+    builder.add_node("appointment_cancel", appointment_cancel)
+    builder.add_node("document_status", document_status)
 
     # --- Add edges ---
     builder.add_edge(START, "intent_classify")
     builder.add_edge("intent_classify", "service_router")
     builder.add_conditional_edges("service_router", route_by_intent)
 
-    for node in ["status_check", "appointment_book", "document_request",
+    for node in ["status_check", "appointment_book", "appointment_list",
+                 "appointment_cancel", "document_request", "document_status",
                  "faq_answer", "complaint", "escalate"]:
         builder.add_conditional_edges(node, check_pending_intents)
 

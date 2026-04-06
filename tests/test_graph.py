@@ -272,6 +272,9 @@ class TestGraphRouting:
         from agent.graph import route_by_intent
         assert route_by_intent({"current_intent": "status_check"}) == "status_check"
         assert route_by_intent({"current_intent": "appointment_book"}) == "appointment_book"
+        assert route_by_intent({"current_intent": "appointment_list"}) == "appointment_list"
+        assert route_by_intent({"current_intent": "appointment_cancel"}) == "appointment_cancel"
+        assert route_by_intent({"current_intent": "document_status"}) == "document_status"
         assert route_by_intent({"current_intent": "escalate"}) == "escalate"
         assert route_by_intent({"current_intent": "faq"}) == "faq_answer"
         assert route_by_intent({"current_intent": "fee_inquiry"}) == "faq_answer"
