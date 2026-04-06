@@ -57,6 +57,10 @@ class Application(Base):
     application_ref = Column(String, unique=True, nullable=False, index=True)
     service_type = Column(String, nullable=False)  # passport, id_card, driver_license, civil_registry
     status = Column(String, nullable=False, default="pending")  # pending, in_review, approved, rejected, additional_docs_needed
+    notes = Column(String, nullable=True)  # Detail/explanation (e.g. "Eksik belge: nufus cuzdani fotokopisi")
+    submitted_date = Column(String, nullable=True)  # YYYY-MM-DD
+    last_updated = Column(String, nullable=True)  # YYYY-MM-DD
+    office = Column(String, nullable=True)  # Processing office
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 

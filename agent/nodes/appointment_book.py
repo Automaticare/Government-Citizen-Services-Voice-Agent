@@ -47,11 +47,9 @@ def appointment_book(state: AgentState) -> dict:
     language = state.get("language", "tr")
 
     if not profile:
-        msg = ("I can help you book an appointment. First, I need to verify your identity. "
-               "Could you please tell me the last four digits of your TC Kimlik number?"
+        msg = ("I need to verify your identity before booking an appointment."
                if language == "en" else
-               "Randevu almaniza yardimci olabilirim. Oncelikle kimliginizi dogrulamam gerekiyor. "
-               "TC Kimlik numaranizin son dort hanesini soyler misiniz?")
+               "Randevu almak icin kimlik dogrulamasi gerekiyor.")
         return {
             "messages": [AIMessage(content=msg)],
             "completed_intents": mark_completed(state, "appointment_book"),

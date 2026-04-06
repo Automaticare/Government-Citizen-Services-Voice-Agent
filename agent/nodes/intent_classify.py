@@ -10,7 +10,6 @@ from langchain_openai import ChatOpenAI
 
 from agent.state import AgentState, Intent
 from agent.logging_config import get_logger
-from agent.nodes.auth_collect import is_auth_collecting
 
 logger = get_logger(__name__)
 
@@ -45,23 +44,20 @@ _llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
 
 def intent_classify(state: AgentState) -> dict:
-    """Classify the caller's intent from conversation context.
-
-    If auth credentials are being collected (detected from conversation
-    history), skip LLM classification and route directly to auth_collect.
-    """
+    """Classify the caller's intent from conversation context."""
     messages = state.get("messages", [])
     if not messages:
         return {"current_intent": "unknown"}
 
-    # Check if we're in the middle of collecting auth credentials
-    if is_auth_collecting(messages):
-        logger.info("Intent classified: auth_collect (auth flow in progress)")
-        return {"current_intent": "auth_collect"}
-
+    # Send last 4 messages for context (not just last message).
+    # This helps the LLM understand follow-up responses like "pasaport"
+    # after the agent listed multiple applications.
+    # System messages are filtered out to avoid confusing the classifier.
+    conv_messages = [m for m in messages if not isinstance(m, SystemMessage)]
+    context = conv_messages[-4:] if len(conv_messages) > 4 else conv_messages
     response = _llm.invoke([
         SystemMessage(content=INTENT_SYSTEM_PROMPT),
-        messages[-1],
+        *context,
     ])
 
     raw_intent = response.content.strip().lower()

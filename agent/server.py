@@ -288,28 +288,41 @@ async def chat_completions(request: ChatCompletionRequest):
         elif msg.role == "system":
             lc_messages.append(SystemMessage(content=content))
 
-    # Detect post-auth: if many messages (>8) and last user message is
-    # an auth artifact (single letter, short number), find the user's
-    # ORIGINAL request from the beginning of conversation and use that.
-    if lc_messages and len(request.messages) > 8:
+    # Extract citizen profile from system prompt dynamic variables.
+    # ElevenLabs injects {{first_name}} etc. into system prompt after
+    # successful auth via workflow dispatch tool. This is checked on
+    # EVERY turn so authenticated state persists across the conversation.
+    import re
+    if system_prompt_content:
+        name_match = re.search(r'Vatandasin adi:\s*(\w+)', system_prompt_content)
+        ref_match = re.search(r'Basvuru numarasi:\s*([\w-]+)', system_prompt_content)
+        status_match = re.search(r'Basvuru durumu:\s*(\w+)', system_prompt_content)
+
+        if name_match:
+            auth_status = "authenticated"
+            citizen_profile = {
+                "first_name": name_match.group(1),
+                "application_ref": ref_match.group(1) if ref_match else "",
+                "application_status": status_match.group(1) if status_match else "",
+            }
+            logger.info(f"Authenticated via dynamic variables: {citizen_profile}")
+
+    # Detect post-auth first turn: if many messages (>8) and last user
+    # message is an auth artifact (single letter, short number), find the
+    # user's ORIGINAL request from the beginning of conversation.
+    if lc_messages and len(request.messages) > 8 and auth_status == "authenticated":
         user_msgs = [m for m in lc_messages if isinstance(m, HumanMessage)]
         if user_msgs:
             last_content = user_msgs[-1].content.strip()
             is_auth_artifact = len(last_content) <= 4
 
             if is_auth_artifact:
-                # Find first real user request (not auth data).
-                # Auth artifacts: short strings, dates, single letters.
-                # Real requests contain actual words like "başvuru", "randevu", etc.
-                import re
                 def _is_auth_data(text: str) -> bool:
                     t = text.strip().lower()
                     if len(t) <= 4:
                         return True
-                    # Date patterns: "15 mart 1990", "15/03/1990"
                     if re.match(r'^\d{1,2}[\s/.\-]\w+[\s/.\-]\d{4}$', t):
                         return True
-                    # Pure numbers
                     if t.replace(" ", "").replace("-", "").replace(".", "").isdigit():
                         return True
                     return False
@@ -322,25 +335,8 @@ async def chat_completions(request: ChatCompletionRequest):
                         break
 
                 if original_request:
-                    logger.info(f"Post-auth detected — using original request: '{original_request[:50]}'")
+                    logger.info(f"Post-auth first turn — using original request: '{original_request[:50]}'")
                     lc_messages = [HumanMessage(content=original_request)]
-
-                    # Extract citizen profile from system prompt dynamic variables
-                    # ElevenLabs injects {{first_name}} etc. into system prompt
-                    import re
-                    sp = system_prompt_content
-                    name_match = re.search(r'Vatandasin adi:\s*(\w+)', sp)
-                    ref_match = re.search(r'Basvuru numarasi:\s*([\w-]+)', sp)
-                    status_match = re.search(r'Basvuru durumu:\s*(\w+)', sp)
-
-                    if name_match:
-                        auth_status = "authenticated"
-                        citizen_profile = {
-                            "first_name": name_match.group(1),
-                            "application_ref": ref_match.group(1) if ref_match else "",
-                            "application_status": status_match.group(1) if status_match else "",
-                        }
-                        logger.info(f"Post-auth citizen profile from system prompt: {citizen_profile}")
 
     # ElevenLabs sends full message history with every request (stateless).
     # Pass all messages to the graph — no checkpointer needed.

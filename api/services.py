@@ -26,10 +26,14 @@ class ApplicationStatusResponse(BaseModel):
     application_ref: str
     service_type: str
     status: str
+    citizen_id: int | None = None
     first_name: str
     last_name_initial: str
     estimated_completion: str | None = None
     notes: str | None = None
+    submitted_date: str | None = None
+    last_updated: str | None = None
+    office: str | None = None
 
 
 class AppointmentRequest(BaseModel):
@@ -149,10 +153,14 @@ def get_application_status(ref_number: str, db: Session = Depends(get_db)):
         application_ref=application.application_ref,
         service_type=application.service_type,
         status=application.status,
+        citizen_id=application.citizen_id,
         first_name=citizen.first_name if citizen else "Unknown",
         last_name_initial=(citizen.last_name[0] + "***") if citizen else "?***",
         estimated_completion=ESTIMATED_COMPLETION.get(application.status),
-        notes=f"Basvuru {application.status} asamasindadir." if application.status != "approved" else None,
+        notes=application.notes,
+        submitted_date=application.submitted_date,
+        last_updated=application.last_updated,
+        office=application.office,
     )
 
 
@@ -177,7 +185,10 @@ def list_citizen_applications(citizen_id: int, db: Session = Depends(get_db)):
             first_name=citizen.first_name,
             last_name_initial=citizen.last_name[0] + "***",
             estimated_completion=ESTIMATED_COMPLETION.get(app.status),
-            notes=f"Basvuru {app.status} asamasindadir." if app.status != "approved" else None,
+            notes=app.notes,
+            submitted_date=app.submitted_date,
+            last_updated=app.last_updated,
+            office=app.office,
         )
         for app in applications
     ]

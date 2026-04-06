@@ -58,56 +58,108 @@ SEED_CITIZENS = [
     ("250000002", "David", "Williams", "James", "15/05/1978", "en"),
 ]
 
-# Applications: (citizen_index, ref, service_type, status)
+# Applications: (citizen_index, ref, service_type, status, notes, submitted_date, last_updated, office)
 # citizen_index is 0-based index into SEED_CITIZENS
 SEED_APPLICATIONS = [
-    # Ahmet — 2 applications (passport in_review, id_card approved)
-    (0, "2024-TR-0001", "passport", "in_review"),
-    (0, "2024-TR-0024", "id_card", "approved"),
+    # Ahmet — 2 applications
+    (0, "2024-TR-0001", "passport", "in_review",
+     "Basvuru inceleme asamasinda. Biyometrik dogrulama tamamlandi.",
+     "2024-11-15", "2025-03-20", "Kadikoy Nufus Mudurlugu"),
+    (0, "2024-TR-0024", "id_card", "approved",
+     "Kimlik karti basildi. Teslim icin ofise basvurunuz.",
+     "2024-09-10", "2025-02-28", "Kadikoy Nufus Mudurlugu"),
     # Fatma — 1 application
-    (1, "2024-TR-0002", "id_card", "approved"),
-    # Mehmet — 2 applications (driver_license pending, passport rejected)
-    (2, "2024-TR-0003", "driver_license", "pending"),
-    (2, "2024-TR-0025", "passport", "rejected"),
+    (1, "2024-TR-0002", "id_card", "approved",
+     "Kimlik karti hazir. Nufus mudurlugunden teslim alinabilir.",
+     "2024-10-05", "2025-01-15", "Uskudar Nufus Mudurlugu"),
+    # Mehmet — 2 applications
+    (2, "2024-TR-0003", "driver_license", "pending",
+     "Basvuru alindi. Sinav tarihi belirlenmedi.",
+     "2025-03-01", "2025-03-01", "Besiktas Nufus Mudurlugu"),
+    (2, "2024-TR-0025", "passport", "rejected",
+     "Fotograf gereksinimleri karsilanmadi. Yeniden basvuru yapilabilir.",
+     "2024-08-20", "2025-01-10", "Besiktas Nufus Mudurlugu"),
     # Ayse — 1 application
-    (3, "2024-TR-0004", "civil_registry", "rejected"),
+    (3, "2024-TR-0004", "civil_registry", "rejected",
+     "Eksik evrak nedeniyle reddedildi. Itiraz suresi otuz gun.",
+     "2024-07-15", "2025-02-01", "Bakirkoy Nufus Mudurlugu"),
     # Mustafa — 1 application
-    (4, "2024-TR-0005", "passport", "in_review"),
-    # Emine — 2 applications (id_card approved, civil_registry pending)
-    (5, "2024-TR-0006", "id_card", "approved"),
-    (5, "2024-TR-0026", "civil_registry", "pending"),
+    (4, "2024-TR-0005", "passport", "in_review",
+     "Guvenlik kontrolu devam ediyor.",
+     "2025-01-20", "2025-03-15", "Bakirkoy Nufus Mudurlugu"),
+    # Emine — 2 applications
+    (5, "2024-TR-0006", "id_card", "approved",
+     "Kimlik karti hazir. En yakin nufus mudurlugunden teslim alinabilir.",
+     "2024-06-10", "2024-12-20", "Uskudar Nufus Mudurlugu"),
+    (5, "2024-TR-0026", "civil_registry", "pending",
+     "Dogum belgesi basvurusu isleme alindi.",
+     "2025-03-10", "2025-03-10", "Uskudar Nufus Mudurlugu"),
     # Huseyin — 1 application
-    (6, "2024-TR-0007", "passport", "additional_docs_needed"),
+    (6, "2024-TR-0007", "passport", "additional_docs_needed",
+     "Nufus cuzdani fotokopisi ve son alti aylik fotograf eksik.",
+     "2024-12-01", "2025-03-25", "Kadikoy Nufus Mudurlugu"),
     # Zeynep — 1 application
-    (7, "2024-TR-0008", "driver_license", "pending"),
+    (7, "2024-TR-0008", "driver_license", "pending",
+     "Ehliyet sinav basvurusu alindi. Sinav takvimi bekleniyor.",
+     "2025-02-15", "2025-02-15", "Besiktas Nufus Mudurlugu"),
     # Ali — 1 application
-    (8, "2024-TR-0009", "id_card", "in_review"),
+    (8, "2024-TR-0009", "id_card", "in_review",
+     "Kimlik karti yenileme basvurusu inceleniyor.",
+     "2025-02-01", "2025-03-18", "Kadikoy Nufus Mudurlugu"),
     # Hatice — 1 application
-    (9, "2024-TR-0010", "passport", "approved"),
+    (9, "2024-TR-0010", "passport", "approved",
+     "Pasaport basildi. Kadikoy Nufus Mudurlugunden teslim alinabilir.",
+     "2024-05-20", "2024-11-30", "Kadikoy Nufus Mudurlugu"),
     # Ibrahim — 1 application
-    (10, "2024-TR-0011", "civil_registry", "pending"),
+    (10, "2024-TR-0011", "civil_registry", "pending",
+     "Ikametgah belgesi basvurusu isleme alindi.",
+     "2025-03-20", "2025-03-20", "Bakirkoy Nufus Mudurlugu"),
     # Meryem — 1 application
-    (11, "2024-TR-0012", "driver_license", "in_review"),
+    (11, "2024-TR-0012", "driver_license", "in_review",
+     "Ehliyet sinav sonuclari degerlendirilmektedir.",
+     "2025-01-10", "2025-03-22", "Uskudar Nufus Mudurlugu"),
     # Hasan — 1 application
-    (12, "2024-TR-0013", "id_card", "approved"),
+    (12, "2024-TR-0013", "id_card", "approved",
+     "Kimlik karti hazir. Besiktas Nufus Mudurlugunden teslim alinabilir.",
+     "2024-08-15", "2025-01-05", "Besiktas Nufus Mudurlugu"),
     # Elif — 1 application
-    (13, "2024-TR-0014", "passport", "rejected"),
+    (13, "2024-TR-0014", "passport", "rejected",
+     "Harclik odemesi tamamlanmamis. Odeme sonrasi yeniden basvuru yapilabilir.",
+     "2024-09-25", "2025-02-10", "Bakirkoy Nufus Mudurlugu"),
     # Omer — 1 application
-    (14, "2024-TR-0015", "driver_license", "additional_docs_needed"),
+    (14, "2024-TR-0015", "driver_license", "additional_docs_needed",
+     "Saglik raporu eksik. Saglik kurulusundan onaylanmis rapor gerekli.",
+     "2024-11-05", "2025-03-28", "Kadikoy Nufus Mudurlugu"),
     # Sule — 1 application
-    (15, "2024-TR-0016", "civil_registry", "pending"),
+    (15, "2024-TR-0016", "civil_registry", "pending",
+     "Evlilik cuzdani basvurusu alindi.",
+     "2025-03-05", "2025-03-05", "Uskudar Nufus Mudurlugu"),
     # Osman — 1 application
-    (16, "2024-TR-0017", "passport", "in_review"),
+    (16, "2024-TR-0017", "passport", "in_review",
+     "Basvuru degerlendirilmektedir. Ek bilgi talep edilebilir.",
+     "2025-02-20", "2025-03-30", "Besiktas Nufus Mudurlugu"),
     # Merve — 1 application
-    (17, "2024-TR-0018", "id_card", "approved"),
+    (17, "2024-TR-0018", "id_card", "approved",
+     "Kimlik karti hazir. Bakirkoy Nufus Mudurlugunden teslim alinabilir.",
+     "2024-10-15", "2025-02-25", "Bakirkoy Nufus Mudurlugu"),
     # Yusuf — 1 application
-    (18, "2024-TR-0019", "driver_license", "pending"),
+    (18, "2024-TR-0019", "driver_license", "pending",
+     "Ehliyet basvurusu alindi. Evrak kontrolu yapilacak.",
+     "2025-03-15", "2025-03-15", "Kadikoy Nufus Mudurlugu"),
     # Busra — 1 application
-    (19, "2024-TR-0020", "passport", "in_review"),
+    (19, "2024-TR-0020", "passport", "in_review",
+     "Pasaport basvurusu incelemede.",
+     "2025-01-25", "2025-03-12", "Uskudar Nufus Mudurlugu"),
     # English citizens
-    (20, "2024-EN-0001", "passport", "approved"),
-    (21, "2024-EN-0002", "id_card", "in_review"),
-    (22, "2024-EN-0003", "driver_license", "pending"),
+    (20, "2024-EN-0001", "passport", "approved",
+     "Passport printed. Available for pickup at Kadikoy Office.",
+     "2024-07-10", "2025-01-20", "Kadikoy Nufus Mudurlugu"),
+    (21, "2024-EN-0002", "id_card", "in_review",
+     "ID card renewal application under review.",
+     "2025-02-05", "2025-03-19", "Besiktas Nufus Mudurlugu"),
+    (22, "2024-EN-0003", "driver_license", "pending",
+     "Driver's license application received. Awaiting exam schedule.",
+     "2025-03-18", "2025-03-18", "Bakirkoy Nufus Mudurlugu"),
 ]
 
 
@@ -148,12 +200,16 @@ def seed(reset: bool = False):
         print(f"Seeded {len(SEED_CITIZENS)} citizen records.")
 
         # Seed applications (1:N with citizens)
-        for citizen_idx, ref, service_type, status in SEED_APPLICATIONS:
+        for citizen_idx, ref, service_type, status, notes, submitted, updated, office in SEED_APPLICATIONS:
             app = Application(
                 citizen_id=citizens[citizen_idx].id,
                 application_ref=ref,
                 service_type=service_type,
                 status=status,
+                notes=notes,
+                submitted_date=submitted,
+                last_updated=updated,
+                office=office,
             )
             db.add(app)
 
