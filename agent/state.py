@@ -72,6 +72,10 @@ class AgentState(TypedDict):
     rag_query: str | None
     rag_score: float | None
 
+    # Node-level performance (ms)
+    timing_intent_classify: int | None
+    timing_service_node: int | None
+
     # Metadata
     prompt_version: str
     language: str

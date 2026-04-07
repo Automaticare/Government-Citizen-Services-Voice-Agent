@@ -126,6 +126,7 @@ class ConversationLog(Base):
     response_time_ms = Column(Integer, nullable=True)  # LangGraph processing time
     rag_query = Column(String, nullable=True)  # RAG search query (if faq intent)
     rag_score = Column(Float, nullable=True)  # Top RAG result relevance score
+    intent_classify_ms = Column(Integer, nullable=True)  # Intent classification time
 
 
 def init_db():

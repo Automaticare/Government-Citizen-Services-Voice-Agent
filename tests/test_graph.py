@@ -31,6 +31,8 @@ def make_state(**overrides) -> AgentState:
         "workflow_node": None,
         "rag_query": None,
         "rag_score": None,
+        "timing_intent_classify": None,
+        "timing_service_node": None,
         "prompt_version": "v1.0",
         "language": "tr",
     }

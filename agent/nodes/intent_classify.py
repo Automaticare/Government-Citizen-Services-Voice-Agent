@@ -56,12 +56,16 @@ def intent_classify(state: AgentState) -> dict:
     # Send full conversation history (system messages excluded).
     # ElevenLabs sends full history each turn — we use it all so the
     # LLM understands follow-ups, topic changes, and conversation state.
+    import time as _time
+    _start = _time.time()
+
     conv_messages = [m for m in messages if not isinstance(m, SystemMessage)]
     response = _llm.invoke([
         SystemMessage(content=INTENT_SYSTEM_PROMPT),
         *conv_messages,
     ])
 
+    _elapsed = int((_time.time() - _start) * 1000)
     raw_intent = response.content.strip().lower()
 
     valid_intents: list[Intent] = [
@@ -71,6 +75,6 @@ def intent_classify(state: AgentState) -> dict:
     ]
 
     intent: Intent = raw_intent if raw_intent in valid_intents else "faq"
-    logger.info(f"Intent classified: {intent} (raw: {raw_intent})")
+    logger.info(f"Intent classified: {intent} (raw: {raw_intent}) | {_elapsed}ms")
 
-    return {"current_intent": intent}
+    return {"current_intent": intent, "timing_intent_classify": _elapsed}

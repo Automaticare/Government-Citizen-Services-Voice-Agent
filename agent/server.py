@@ -445,6 +445,7 @@ async def chat_completions(request: ChatCompletionRequest):
                         response_time_ms=_elapsed_ms,
                         rag_query=result.get("rag_query"),
                         rag_score=result.get("rag_score"),
+                        intent_classify_ms=result.get("timing_intent_classify"),
                     ))
                     _db.commit()
                     _db.close()
