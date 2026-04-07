@@ -1425,3 +1425,128 @@ Predict peak call hours from historical data and calculate per-intent cost break
 - [ ] UI sections visible in dashboard with professional layout
 - [ ] Clear "production data needed" messaging
 - [ ] Data structure ready for future activation
+
+---
+
+# ISSUE-37: Multi-Agent Insight Engine (Redesign)
+
+## Module
+Analytics Dashboard — Intelligence Layer
+
+## Priority
+P0
+
+## Dependencies
+ISSUE-30 (current basic version)
+
+## Description
+Redesign the LLM-powered insight engine with specialized agents. Each agent focuses on one domain, produces specific actionable recommendations with source data attribution. Current single-LLM approach produces generic advice — multi-agent approach produces expert-level, platform-aware recommendations.
+
+**Why multi-agent:** Each analysis domain (RAG quality, node performance, escalation patterns) requires different context, different metrics, and different ElevenLabs documentation. Single prompt can't do justice to all three.
+
+## Architecture
+```
+Orchestrator Agent (GPT-4o)
+  → RAG Quality Agent — analyzes rag_score, rag_query, knowledge gaps
+  → Performance Agent — analyzes response_time, intent_classify_ms, bottlenecks
+  → Pattern Agent — analyzes escalation rate, intent transitions, failure patterns
+  → Platform Agent — retrieves ElevenLabs docs RAG, maps findings to platform features
+  → Report Generator — combines all agent outputs into prioritized recommendations
+```
+
+## Tasks
+- [ ] Design agent architecture — which agents, what each one receives/returns
+- [ ] RAG Quality Agent — low score analysis, content gap grouping, specific document recommendations
+- [ ] Performance Agent — per-node timing, bottleneck detection, model/config optimization suggestions
+- [ ] Pattern Agent — escalation trigger analysis, intent flow failures, conversation drop-off points
+- [ ] Platform Agent — ElevenLabs docs RAG, map each finding to specific platform feature/config
+- [ ] Report Generator — deduplicate, prioritize, format with source data attribution
+- [ ] Source data attribution — every recommendation shows which metrics/data it's based on
+- [ ] Dashboard integration — replace current "Generate Insights" with richer multi-agent output
+
+## Acceptance Criteria
+- [ ] Each recommendation references specific metrics ("avg_response=6502ms, bottleneck: faq_answer")
+- [ ] Each recommendation suggests specific platform action ("enable ElevenLabs buffer words" not "reduce latency")
+- [ ] Source data visible for every insight
+- [ ] Recommendations are non-generic — could not be generated without looking at actual data
+
+---
+
+# ISSUE-38: Enhanced ElevenLabs Docs RAG
+
+## Module
+RAG Pipeline
+
+## Priority
+P1
+
+## Dependencies
+ISSUE-37
+
+## Description
+Improve the ElevenLabs documentation RAG for the insight engine. Current implementation uses a single generic query. Enhanced version uses metric-specific queries and returns more targeted documentation.
+
+## Tasks
+- [ ] Metric-aware query generation — "high escalation rate" → search for escalation handling docs
+- [ ] Multi-query retrieval — each insight type generates its own focused query
+- [ ] Source attribution — show which ElevenLabs doc section each recommendation comes from
+- [ ] Chunk quality improvement — better splitting for ElevenLabs docs (code blocks, tabs, etc.)
+- [ ] Relevance scoring — filter out low-relevance chunks before sending to LLM
+
+## Acceptance Criteria
+- [ ] RAG returns platform-specific, actionable documentation
+- [ ] Each insight cites specific ElevenLabs doc section
+- [ ] No generic "visit the docs" recommendations
+
+---
+
+# ISSUE-39: Sentiment Tracking Implementation
+
+## Module
+Analytics Dashboard
+
+## Priority
+P1
+
+## Dependencies
+ISSUE-19
+
+## Description
+Analyze conversation sentiment per turn and per conversation. Track citizen satisfaction proxy — did the conversation end positively?
+
+## Tasks
+- [ ] Add sentiment field to ConversationLog (positive/neutral/negative)
+- [ ] Lightweight sentiment analysis per conversation (LLM-based, post-conversation)
+- [ ] Dashboard: sentiment distribution, trend over time
+- [ ] Dashboard: "citizen satisfaction proxy" — % conversations ending positive
+- [ ] Correlation: which intents produce negative sentiment
+
+## Acceptance Criteria
+- [ ] Sentiment tracked per conversation
+- [ ] Dashboard shows actionable sentiment insights
+
+---
+
+# ISSUE-40: Conversation Flow Visualization
+
+## Module
+Analytics Dashboard
+
+## Priority
+P1
+
+## Dependencies
+ISSUE-19
+
+## Description
+Visualize conversation node paths as flow diagrams. Identify common paths, drop-offs, bottlenecks.
+
+## Tasks
+- [ ] Track node transitions per conversation (intent sequence)
+- [ ] Build Sankey or flow visualization in Streamlit
+- [ ] Identify most common paths and drop-off points
+- [ ] Highlight bottleneck nodes (high latency or escalation)
+
+## Acceptance Criteria
+- [ ] Real conversation paths visible as flow diagram
+- [ ] Drop-off and bottleneck nodes identified
