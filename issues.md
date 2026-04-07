@@ -1544,14 +1544,14 @@ ISSUE-19
 Visualize conversation node paths as flow diagrams. Identify common paths, drop-offs, bottlenecks.
 
 ## Tasks
-- [ ] Track node transitions per conversation (intent sequence)
-- [ ] Build Sankey or flow visualization in Streamlit
-- [ ] Identify most common paths and drop-off points
-- [ ] Highlight bottleneck nodes (high latency or escalation)
+- [x] Track node transitions per conversation (intent sequence)
+- [x] Build Sankey or flow visualization in Streamlit
+- [x] Identify most common paths and drop-off points
+- [x] Highlight bottleneck nodes (high latency or escalation)
 
 ## Acceptance Criteria
-- [ ] Real conversation paths visible as flow diagram
-- [ ] Drop-off and bottleneck nodes identified
+- [x] Real conversation paths visible as flow diagram
+- [x] Drop-off and bottleneck nodes identified
 
 ---
 

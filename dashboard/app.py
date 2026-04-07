@@ -354,19 +354,155 @@ with tab_knowledge:
 
 
 # =====================================================
-# TAB 5: CONVERSATION FLOWS (placeholder for ISSUE-40)
+# TAB 5: CONVERSATION FLOWS
 # =====================================================
 with tab_flows:
-    st.subheader("Conversation Flow Visualization")
-    st.info("Coming soon — node transition diagrams showing common conversation paths, drop-off points, and bottlenecks.")
 
-    # Show basic workflow node distribution as interim
-    node_counts = df[df["workflow_node"] != ""]["workflow_node"].value_counts()
-    if not node_counts.empty:
-        st.subheader("Workflow Node Distribution")
-        st.bar_chart(node_counts)
+    # Build intent transitions per conversation
+    flow_df = df[df["intent"].notna() & (df["intent"] != "")].sort_values(["conversation_id", "timestamp"])
+    conversations = flow_df.groupby("conversation_id")["intent"].apply(list).reset_index()
+    conversations.columns = ["conversation_id", "intents"]
+
+    # Only keep conversations with at least one intent
+    conversations = conversations[conversations["intents"].apply(len) >= 1]
+
+    if conversations.empty:
+        st.info("No conversation flow data yet. Conversations will populate this section.")
     else:
-        st.caption("No workflow node data yet.")
+        # --- Sankey diagram: intent transitions ---
+        st.subheader("Intent Transition Flow")
+        st.caption("How conversations move between intents. Thicker links = more frequent transitions.")
+
+        # Count transitions: START → first intent, intent → intent, last intent → END
+        from collections import Counter
+        transitions = Counter()
+        first_intents = Counter()
+        last_intents = Counter()
+
+        for _, row in conversations.iterrows():
+            intents = row["intents"]
+            first_intents[intents[0]] += 1
+            last_intents[intents[-1]] += 1
+            for i in range(len(intents) - 1):
+                if intents[i] != intents[i + 1]:  # Skip self-loops
+                    transitions[(intents[i], intents[i + 1])] += 1
+
+        # Build Sankey nodes and links
+        all_intents = sorted(set(
+            list(first_intents.keys()) +
+            list(last_intents.keys()) +
+            [t[0] for t in transitions.keys()] +
+            [t[1] for t in transitions.keys()]
+        ))
+        node_labels = ["START"] + all_intents + ["END"]
+        node_idx = {label: i for i, label in enumerate(node_labels)}
+
+        sources = []
+        targets = []
+        values = []
+
+        # START → first intent
+        for intent, count in first_intents.items():
+            sources.append(node_idx["START"])
+            targets.append(node_idx[intent])
+            values.append(count)
+
+        # intent → intent transitions
+        for (src, tgt), count in transitions.items():
+            sources.append(node_idx[src])
+            targets.append(node_idx[tgt])
+            values.append(count)
+
+        # last intent → END
+        for intent, count in last_intents.items():
+            sources.append(node_idx[intent])
+            targets.append(node_idx["END"])
+            values.append(count)
+
+        # Color nodes by type
+        node_colors = []
+        for label in node_labels:
+            if label in ("START", "END"):
+                node_colors.append("#6c757d")
+            elif label == "escalate":
+                node_colors.append("#dc3545")
+            elif label == "complaint":
+                node_colors.append("#fd7e14")
+            elif label in ("faq", "fee_inquiry"):
+                node_colors.append("#0d6efd")
+            elif label in ("status_check", "document_status", "appointment_list"):
+                node_colors.append("#198754")
+            elif label in ("appointment_book", "document_request"):
+                node_colors.append("#6f42c1")
+            elif label == "appointment_cancel":
+                node_colors.append("#e83e8c")
+            else:
+                node_colors.append("#adb5bd")
+
+        import plotly.graph_objects as go
+
+        fig = go.Figure(data=[go.Sankey(
+            node=dict(
+                pad=20,
+                thickness=25,
+                label=node_labels,
+                color=node_colors,
+            ),
+            link=dict(
+                source=sources,
+                target=targets,
+                value=values,
+                color="rgba(150, 150, 150, 0.3)",
+            ),
+        )])
+        fig.update_layout(
+            height=450,
+            margin=dict(l=20, r=20, t=20, b=20),
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.divider()
+
+        # --- Common paths ---
+        st.subheader("Most Common Conversation Paths")
+
+        path_counts = conversations["intents"].apply(lambda x: " → ".join(x)).value_counts().head(10)
+        if not path_counts.empty:
+            path_table = path_counts.reset_index()
+            path_table.columns = ["Path", "Count"]
+            st.dataframe(path_table, hide_index=True, use_container_width=True)
+
+        st.divider()
+
+        # --- Drop-off and bottleneck analysis ---
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.subheader("First Intent (Entry Points)")
+            st.caption("What citizens ask for first")
+            first_df = pd.DataFrame(first_intents.items(), columns=["Intent", "Count"]).sort_values("Count", ascending=False)
+            st.dataframe(first_df, hide_index=True, use_container_width=True)
+
+        with col2:
+            st.subheader("Last Intent (Exit Points)")
+            st.caption("Where conversations end — escalate/complaint here may indicate drop-off")
+            last_df = pd.DataFrame(last_intents.items(), columns=["Intent", "Count"]).sort_values("Count", ascending=False)
+            st.dataframe(last_df, hide_index=True, use_container_width=True)
+
+        # Multi-intent vs single-intent
+        st.divider()
+        st.subheader("Conversation Depth")
+        conversations["depth"] = conversations["intents"].apply(len)
+        col1, col2, col3 = st.columns(3)
+        single = (conversations["depth"] == 1).sum()
+        multi = (conversations["depth"] > 1).sum()
+        avg_depth = conversations["depth"].mean()
+        col1.metric("Single-Intent", single)
+        col2.metric("Multi-Intent", multi)
+        col3.metric("Avg Intents/Conversation", f"{avg_depth:.1f}")
+
+        depth_dist = conversations["depth"].value_counts().sort_index()
+        st.bar_chart(depth_dist)
 
 
 # =====================================================
