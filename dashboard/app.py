@@ -289,6 +289,77 @@ else:
 
 
 # =====================================================
+# KNOWLEDGE GAP DETECTION (RAG Performance)
+# =====================================================
+st.header("Knowledge Gap Detection")
+
+rag_df = df[df["rag_query"].notna() & (df["rag_query"] != "")]
+if not rag_df.empty:
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.subheader("RAG Score Distribution")
+        avg_rag = rag_df["rag_score"].mean()
+        low_score = rag_df[rag_df["rag_score"] < 0.4]
+        st.metric("Avg RAG Score", f"{avg_rag:.2f}")
+        st.metric("Low Score Queries (<0.4)", len(low_score))
+        if rag_df["rag_score"].notna().any():
+            st.bar_chart(rag_df["rag_score"].dropna())
+
+    with col2:
+        st.subheader("Knowledge Gaps — Low Score Queries")
+        if not low_score.empty:
+            gaps = low_score[["rag_query", "rag_score"]].sort_values("rag_score")
+            gaps.columns = ["Query", "Score"]
+            st.dataframe(gaps, hide_index=True, use_container_width=True)
+            st.caption("These queries returned low relevance scores — consider adding more content to the knowledge base.")
+        else:
+            st.success("No knowledge gaps detected — all queries scored above 0.4")
+else:
+    st.info("No RAG queries logged yet. FAQ conversations will populate this section.")
+
+
+# =====================================================
+# NODE-LEVEL PERFORMANCE
+# =====================================================
+st.header("Node-Level Performance")
+
+if "intent_classify_ms" in df.columns and df["intent_classify_ms"].notna().any():
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.subheader("Intent Classification")
+        classify_df = df[df["intent_classify_ms"].notna()]
+        st.metric("Avg", f"{classify_df['intent_classify_ms'].mean():.0f}ms")
+        st.metric("P95", f"{classify_df['intent_classify_ms'].quantile(0.95):.0f}ms")
+        st.bar_chart(classify_df["intent_classify_ms"].astype(int))
+
+    with col2:
+        st.subheader("Service Node (Total - Classify)")
+        both = df[(df["response_time_ms"].notna()) & (df["intent_classify_ms"].notna())].copy()
+        if not both.empty:
+            both["service_ms"] = both["response_time_ms"] - both["intent_classify_ms"]
+            st.metric("Avg", f"{both['service_ms'].mean():.0f}ms")
+            st.metric("P95", f"{both['service_ms'].quantile(0.95):.0f}ms")
+            st.bar_chart(both["service_ms"].astype(int))
+
+    # Per-intent timing breakdown
+    st.subheader("Response Time by Intent (Breakdown)")
+    timing_df = df[df["intent_classify_ms"].notna()].copy()
+    if not timing_df.empty:
+        timing_df["service_ms"] = timing_df["response_time_ms"] - timing_df["intent_classify_ms"]
+        breakdown = timing_df.groupby("intent").agg(
+            classify_ms=("intent_classify_ms", "mean"),
+            service_ms=("service_ms", "mean"),
+            total_ms=("response_time_ms", "mean"),
+        ).round(0).astype(int).reset_index()
+        breakdown.columns = ["Intent", "Classify (ms)", "Service (ms)", "Total (ms)"]
+        st.dataframe(breakdown, hide_index=True, use_container_width=True)
+else:
+    st.info("No node-level timing data yet. Make some requests to populate this section.")
+
+
+# =====================================================
 # ANOMALY DETECTION
 # =====================================================
 st.header("System Health & Anomaly Detection")
