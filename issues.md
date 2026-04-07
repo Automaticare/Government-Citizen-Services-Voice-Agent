@@ -1407,7 +1407,7 @@ Automatically detect questions that the knowledge base cannot answer well. Colle
 Analytics Dashboard
 
 ## Priority
-P2
+P3 — Deferred (requires 30+ days of production data)
 
 ## Dependencies
 ISSUE-19, ISSUE-20
@@ -1434,7 +1434,7 @@ Predict peak call hours from historical data and calculate per-intent cost break
 Analytics Dashboard — Intelligence Layer
 
 ## Priority
-P0
+P3 — Deferred (requires production data volume to be meaningful)
 
 ## Dependencies
 ISSUE-30 (current basic version)
@@ -1443,6 +1443,8 @@ ISSUE-30 (current basic version)
 Redesign the LLM-powered insight engine with specialized agents. Each agent focuses on one domain, produces specific actionable recommendations with source data attribution. Current single-LLM approach produces generic advice — multi-agent approach produces expert-level, platform-aware recommendations.
 
 **Why multi-agent:** Each analysis domain (RAG quality, node performance, escalation patterns) requires different context, different metrics, and different ElevenLabs documentation. Single prompt can't do justice to all three.
+
+**Why deferred:** Without real production conversation data, even 5 specialized agents will produce generic recommendations. This becomes valuable only after sufficient data volume exists.
 
 ## Architecture
 ```
@@ -1478,7 +1480,7 @@ Orchestrator Agent (GPT-4o)
 RAG Pipeline
 
 ## Priority
-P1
+P3 — Deferred (depends on ISSUE-37, same production data constraint)
 
 ## Dependencies
 ISSUE-37
@@ -1506,7 +1508,7 @@ Improve the ElevenLabs documentation RAG for the insight engine. Current impleme
 Analytics Dashboard
 
 ## Priority
-P1
+P3 — Deferred (requires production conversation volume for meaningful sentiment analysis)
 
 ## Dependencies
 ISSUE-19
@@ -1550,3 +1552,43 @@ Visualize conversation node paths as flow diagrams. Identify common paths, drop-
 ## Acceptance Criteria
 - [ ] Real conversation paths visible as flow diagram
 - [ ] Drop-off and bottleneck nodes identified
+
+---
+
+# ISSUE-41: Test Suite Consolidation
+
+## Module
+Testing & Quality
+
+## Priority
+P2
+
+## Dependencies
+None
+
+## Description
+The test suite has significant overlap between `test_graph.py` and `test_core_system.py`. Both files test the same nodes, routing logic, SSE proxy, and circuit breaker. Consolidate into a single organized test suite to eliminate redundancy and standardize on English-only tests.
+
+### Overlapping areas:
+- **Intent classification**: 5 tests in test_graph.py duplicated in test_core_system.py
+- **Status check node**: 5 tests in test_graph.py covered more thoroughly in test_core_system.py
+- **Appointment book**: 2 tests duplicated
+- **Escalate**: 4 tests (tr/en, demo/production, completed_intents) overlap
+- **Graph routing**: route_by_intent + entry_router duplicated
+- **Full graph flows**: 3 tests duplicated
+- **SSE proxy**: 7+ tests overlap
+- **Circuit breaker**: 5 tests fully duplicated
+
+## Tasks
+- [ ] Audit all test files for overlap (test_graph.py, test_core_system.py, test_edge_cases.py, test_services.py, etc.)
+- [ ] Merge unique tests from test_graph.py into test_core_system.py
+- [ ] Remove test_graph.py after migration
+- [ ] Standardize all tests on English language
+- [ ] Ensure no coverage loss after consolidation
+- [ ] Update test count in CLAUDE.md
+
+## Acceptance Criteria
+- [ ] No duplicate test cases across files
+- [ ] All unique test scenarios preserved
+- [ ] Single comprehensive test file per concern (core system, API services, auth, etc.)
+- [ ] Total test count stable or improved after cleanup
