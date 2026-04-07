@@ -68,6 +68,10 @@ class AgentState(TypedDict):
     # Workflow routing (set by server.py from ElevenLabs system prompt [NODE:xxx] marker)
     workflow_node: str | None
 
+    # RAG analytics (set by faq_answer node)
+    rag_query: str | None
+    rag_score: float | None
+
     # Metadata
     prompt_version: str
     language: str

@@ -104,7 +104,12 @@ def faq_answer(state: AgentState) -> dict:
         HumanMessage(content=user_query),
     ])
 
+    # Track RAG analytics
+    top_score = results[0].score if results else 0.0
+
     return {
         "messages": [response],
+        "rag_query": user_query,
+        "rag_score": top_score,
         "completed_intents": mark_completed(state, state.get("current_intent", "faq")),
     }

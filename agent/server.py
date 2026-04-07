@@ -443,6 +443,8 @@ async def chat_completions(request: ChatCompletionRequest):
                         language=language,
                         message_count=len(request.messages),
                         response_time_ms=_elapsed_ms,
+                        rag_query=result.get("rag_query"),
+                        rag_score=result.get("rag_score"),
                     ))
                     _db.commit()
                     _db.close()

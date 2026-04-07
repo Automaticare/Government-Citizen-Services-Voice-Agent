@@ -29,6 +29,8 @@ def make_state(**overrides) -> AgentState:
         "current_intent": "unknown",
         "completed_intents": [],
         "workflow_node": None,
+        "rag_query": None,
+        "rag_score": None,
         "prompt_version": "v1.0",
         "language": "tr",
     }
