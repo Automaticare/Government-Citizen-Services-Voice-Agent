@@ -428,6 +428,29 @@ col4.metric("Resolution Rate", f"{resolution_rate:.0f}%")
 
 
 # =====================================================
+# LLM-POWERED INSIGHTS
+# =====================================================
+st.header("AI-Powered Recommendations")
+st.caption("Powered by GPT-4o + ElevenLabs documentation RAG")
+
+if st.button("Generate Insights"):
+    with st.spinner("Analyzing metrics and platform documentation..."):
+        from dashboard.insights import generate_insights
+        insights = generate_insights(df, auth_df)
+
+    if insights:
+        for insight in insights:
+            priority = insight.get("priority", "low")
+            icon = {"high": "🔴", "medium": "🟡", "low": "🟢"}.get(priority, "ℹ️")
+            itype = insight.get("type", "")
+            title = insight.get("title", "")
+            detail = insight.get("detail", "")
+            st.info(f"{icon} **[{itype.upper()}] {title}**\n\n{detail}")
+    else:
+        st.success("No recommendations at this time.")
+
+
+# =====================================================
 # RECENT CONVERSATIONS
 # =====================================================
 st.header("Recent Conversations")
