@@ -1,10 +1,11 @@
 """
 Deploy agent configuration to ElevenLabs platform via API.
 
-Configures a single multilingual agent with language presets (TR + EN),
-automatic language detection, and Custom LLM endpoint (our LangGraph
-proxy). When Custom LLM is unreachable, ElevenLabs falls back to its
-default LLM (Level 2 graceful degradation via backup_llm_config).
+Configures a single multilingual agent with English as primary language
+and Turkish as language preset. Automatic language detection enabled.
+Custom LLM endpoint routes to our LangGraph proxy. When Custom LLM is
+unreachable, ElevenLabs falls back to its default LLM (Level 2 graceful
+degradation via backup_llm_config).
 
 Usage:
     python -m agent.deploy                  # Deploy multilingual agent
@@ -38,7 +39,7 @@ FIRST_MESSAGES = {
 def build_agent_config(version: str, custom_llm_url: str | None = None) -> dict:
     """Build the ElevenLabs multilingual agent update payload.
 
-    Primary language is Turkish. English is added as a language preset.
+    Primary language is English. Turkish is added as a language preset.
     Language detection system tool enables automatic switching.
 
     Args:
@@ -50,7 +51,7 @@ def build_agent_config(version: str, custom_llm_url: str | None = None) -> dict:
     Returns:
         Dict with conversation_config and name for the update call.
     """
-    system_prompt_tr = load_system_prompt(language="tr", version=version)
+    system_prompt_en = load_system_prompt(language="en", version=version)
 
     # System tools — platform-native, executed by ElevenLabs (not LangGraph)
     from agent.tools.schemas import get_system_tool_configs
@@ -61,7 +62,7 @@ def build_agent_config(version: str, custom_llm_url: str | None = None) -> dict:
     # GPT-4o via dashboard — they handle auth credential collection.
     # Authenticated Service node inherits Custom LLM for LangGraph intelligence.
     prompt_config = {
-        "prompt": system_prompt_tr,
+        "prompt": system_prompt_en,
         "temperature": 0.7,
         "max_tokens": 5000,
         "tools": system_tools,
@@ -77,16 +78,16 @@ def build_agent_config(version: str, custom_llm_url: str | None = None) -> dict:
         prompt_config["llm"] = "gpt-4o"
 
     # Timeout message when max duration is reached
-    MAX_DURATION_MSG_TR = ("Gorusme suresi doldu. Baska bir konuda yardima ihtiyaciniz olursa "
-                           "lutfen tekrar arayin. Iyi gunler dilerim.")
+    MAX_DURATION_MSG_EN = ("The call duration has ended. If you need further assistance, "
+                           "please call again. Have a great day.")
 
-    # Primary config: Turkish
+    # Primary config: English
     conversation_config = ConversationalConfig(
         agent=ELAgentConfig(
             prompt=prompt_config,
-            first_message=FIRST_MESSAGES["tr"],
-            language="tr",
-            max_conversation_duration_message=MAX_DURATION_MSG_TR,
+            first_message=FIRST_MESSAGES["en"],
+            language="en",
+            max_conversation_duration_message=MAX_DURATION_MSG_EN,
         ),
         tts=TtsConversationalConfigOutput(
             model_id="eleven_flash_v2_5",
@@ -101,12 +102,12 @@ def build_agent_config(version: str, custom_llm_url: str | None = None) -> dict:
         conversation={
             "max_duration_seconds": 600,
         },
-        # English language preset — dict format to avoid Input/Output type mismatch
+        # Turkish language preset — dict format to avoid Input/Output type mismatch
         language_presets={
-            "en": {
+            "tr": {
                 "overrides": {
                     "agent": {
-                        "first_message": FIRST_MESSAGES["en"],
+                        "first_message": FIRST_MESSAGES["tr"],
                     },
                 },
             },
@@ -140,7 +141,7 @@ def deploy(version: str | None = None, dry_run: bool = False) -> None:
 
     logger.info(f"Agent: {payload['name']}")
     logger.info(f"Prompt version: {version}")
-    logger.info(f"Primary language: TR | Additional: EN")
+    logger.info(f"Primary language: EN | Additional: TR")
     logger.info(f"Language detection: enabled")
     if custom_llm_url:
         logger.info(f"Custom LLM: {custom_llm_url}")

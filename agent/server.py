@@ -198,15 +198,15 @@ def _extract_language(request: ChatCompletionRequest) -> str:
 
     Priority:
     1. ElevenLabs extra_body (set by platform language_detection tool)
-    2. Default to 'tr' (Turkish government service — Turkish is the safe default)
+    2. Default to 'en' (English is primary demo language)
 
     We do NOT try to detect language from message text — short sentences
-    like "Sen robot musun?" get misclassified. ElevenLabs' native
-    language_detection system tool handles switching when needed.
+    get misclassified. ElevenLabs' native language_detection system tool
+    handles switching when needed.
     """
     if request.elevenlabs_extra_body:
-        return request.elevenlabs_extra_body.get("language", "tr")
-    return "tr"
+        return request.elevenlabs_extra_body.get("language", "en")
+    return "en"
 
 
 

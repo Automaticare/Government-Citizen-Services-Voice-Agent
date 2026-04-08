@@ -1213,13 +1213,13 @@ class TestSSEProxy:
         full_response = "".join(content_parts).lower()
         assert len(full_response) > 0
 
-    def test_language_defaults_to_turkish(self):
-        """Default language extraction returns Turkish."""
+    def test_language_defaults_to_english(self):
+        """Default language extraction returns English."""
         from agent.server import _extract_language, ChatCompletionRequest
         req = ChatCompletionRequest(
             messages=[{"role": "user", "content": "Hello"}],
         )
-        assert _extract_language(req) == "tr"
+        assert _extract_language(req) == "en"
 
     def test_language_from_extra_body(self):
         """Language can be set via elevenlabs_extra_body."""
