@@ -101,6 +101,8 @@ def document_request(state: AgentState) -> dict:
         return {
             "messages": [AIMessage(content=msg)],
             "completed_intents": mark_completed(state, "document_request"),
+            "service_node_name": "document_request",
+            "api_calls_count": 0,
         }
 
     first_name = profile.get("first_name", "")
@@ -119,7 +121,7 @@ def document_request(state: AgentState) -> dict:
             msg = (f"{first_name}, hangi tur belge talep etmek istiyorsunuz? "
                    f"Dogum belgesi, ikametgah belgesi, evlilik cuzdani "
                    f"veya sabika kaydi konusunda yardimci olabilirim.")
-        return {"messages": [AIMessage(content=msg)]}
+        return {"messages": [AIMessage(content=msg)], "service_node_name": "document_request", "api_calls_count": 0}
 
     # Call government API with detected type
     result = _request_via_api(citizen_id, doc_type)
@@ -152,4 +154,6 @@ def document_request(state: AgentState) -> dict:
     return {
         "messages": [AIMessage(content=msg)],
         "completed_intents": mark_completed(state, "document_request"),
+        "service_node_name": "document_request",
+        "api_calls_count": 1,
     }

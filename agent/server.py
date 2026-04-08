@@ -443,6 +443,9 @@ async def chat_completions(request: ChatCompletionRequest):
                         rag_query=result.get("rag_query"),
                         rag_score=result.get("rag_score"),
                         intent_classify_ms=result.get("timing_intent_classify"),
+                        service_node_name=result.get("service_node_name"),
+                        tool_chain_triggered=result.get("tool_chain_triggered"),
+                        api_calls_count=result.get("api_calls_count"),
                     ))
                     _db.commit()
                     _db.close()

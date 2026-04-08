@@ -112,4 +112,7 @@ def faq_answer(state: AgentState) -> dict:
         "rag_query": user_query,
         "rag_score": top_score,
         "completed_intents": mark_completed(state, state.get("current_intent", "faq")),
+        "service_node_name": "faq_answer",
+        "tool_chain_triggered": "faq->rag" if top_score >= RELEVANCE_THRESHOLD else None,
+        "api_calls_count": 0,
     }

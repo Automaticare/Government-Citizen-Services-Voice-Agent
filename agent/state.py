@@ -76,6 +76,11 @@ class AgentState(TypedDict):
     timing_intent_classify: int | None
     timing_service_node: int | None
 
+    # Node details (set by service nodes for analytics)
+    service_node_name: str | None        # which service node ran (e.g. "status_check")
+    tool_chain_triggered: str | None     # tool chain description (e.g. "status->rag_docs")
+    api_calls_count: int | None          # number of API calls made by this node
+
     # Metadata
     prompt_version: str
     language: str

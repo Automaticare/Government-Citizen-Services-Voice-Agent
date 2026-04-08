@@ -118,6 +118,8 @@ def appointment_book(state: AgentState) -> dict:
         return {
             "messages": [AIMessage(content=msg)],
             "completed_intents": mark_completed(state, "appointment_book"),
+            "service_node_name": "appointment_book",
+            "api_calls_count": 0,
         }
 
     first_name = profile.get("first_name", "")
@@ -133,7 +135,7 @@ def appointment_book(state: AgentState) -> dict:
         else:
             msg = (f"{first_name}, hangi hizmet icin randevu almak istiyorsunuz? "
                    f"Pasaport, kimlik karti, ehliyet veya nufus islemi?")
-        return {"messages": [AIMessage(content=msg)]}
+        return {"messages": [AIMessage(content=msg)], "service_node_name": "appointment_book", "api_calls_count": 0}
 
     svc_name = SERVICE_TYPES[service_type]["tr" if language != "en" else "en"]
 
@@ -155,6 +157,8 @@ def appointment_book(state: AgentState) -> dict:
             return {
                 "messages": [AIMessage(content=msg)],
                 "completed_intents": mark_completed(state, "appointment_book"),
+                "service_node_name": "appointment_book",
+                "api_calls_count": 1,
             }
 
     # Book the appointment
@@ -188,9 +192,15 @@ def appointment_book(state: AgentState) -> dict:
             msg = (f"{first_name}, su anda {svc_name} randevunuzu olusturamadim. "
                    f"Lutfen daha sonra tekrar deneyin veya ALO 181'i arayin.")
 
+    _api_calls = 1  # _book_via_api
+    if citizen_id:
+        _api_calls += 1  # _fetch_appointments for conflict check
+
     logger.info(f"Appointment booking | citizen_id={citizen_id} | type={service_type} | success={bool(result)}")
 
     return {
         "messages": [AIMessage(content=msg)],
         "completed_intents": mark_completed(state, "appointment_book"),
+        "service_node_name": "appointment_book",
+        "api_calls_count": _api_calls,
     }

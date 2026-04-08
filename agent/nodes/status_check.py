@@ -189,6 +189,8 @@ def status_check(state: AgentState) -> dict:
     """Check application status with multi-application support and tool chaining."""
     profile = state.get("citizen_profile")
     language = state.get("language", "tr")
+    _api_calls = 0
+    _tool_chain = None
 
     if not profile:
         msg = ("I need to verify your identity before checking your application status."
@@ -197,6 +199,8 @@ def status_check(state: AgentState) -> dict:
         return {
             "messages": [AIMessage(content=msg)],
             "completed_intents": mark_completed(state, "status_check"),
+            "service_node_name": "status_check",
+            "api_calls_count": 0,
         }
 
     citizen_id = profile.get("citizen_id")
@@ -206,11 +210,14 @@ def status_check(state: AgentState) -> dict:
     # If citizen_id missing (post-auth from system prompt), look it up via app_ref
     if not citizen_id and app_ref:
         single = _fetch_status(app_ref)
+        _api_calls += 1
         if single:
             citizen_id = single.get("citizen_id")
 
     # Try to fetch all applications for this citizen
     all_apps = _fetch_all_applications(citizen_id) if citizen_id else []
+    if citizen_id:
+        _api_calls += 1
 
     # Check if user is selecting a specific application from a previous listing
     last_user_msg = ""
@@ -240,10 +247,18 @@ def status_check(state: AgentState) -> dict:
                 _normalize(svc_tr) in normalized_msg or
                 _normalize(svc_en) in normalized_msg):
                 msg = _build_detail_message(app, first_name, language)
+                _tc = None
+                if app["status"] == "additional_docs_needed":
+                    _tc = "status->rag_docs"
+                elif app["status"] == "rejected":
+                    _tc = "status->rag_appeal"
                 logger.info(f"Status check | citizen={first_name} | selected={svc} | status={app['status']}")
                 return {
                     "messages": [AIMessage(content=msg)],
                     "completed_intents": mark_completed(state, "status_check"),
+                    "service_node_name": "status_check",
+                    "tool_chain_triggered": _tc,
+                    "api_calls_count": _api_calls,
                 }
 
     if len(all_apps) > 1:
@@ -284,7 +299,24 @@ def status_check(state: AgentState) -> dict:
         msg = _build_detail_message(fallback_app, first_name, language)
         logger.info(f"Status check | citizen={first_name} | fallback | ref={app_ref}")
 
+    # Detect tool chain from status
+    if len(all_apps) == 1:
+        status = all_apps[0].get("status", "")
+        if status == "additional_docs_needed":
+            _tool_chain = "status->rag_docs"
+        elif status == "rejected":
+            _tool_chain = "status->rag_appeal"
+    elif not all_apps:
+        fallback_status = profile.get("application_status", "")
+        if fallback_status == "additional_docs_needed":
+            _tool_chain = "status->rag_docs"
+        elif fallback_status == "rejected":
+            _tool_chain = "status->rag_appeal"
+
     return {
         "messages": [AIMessage(content=msg)],
         "completed_intents": mark_completed(state, "status_check"),
+        "service_node_name": "status_check",
+        "tool_chain_triggered": _tool_chain,
+        "api_calls_count": _api_calls,
     }

@@ -77,6 +77,8 @@ def appointment_cancel(state: AgentState) -> dict:
         return {
             "messages": [AIMessage(content=msg)],
             "completed_intents": mark_completed(state, "appointment_cancel"),
+            "service_node_name": "appointment_cancel",
+            "api_calls_count": 0,
         }
 
     citizen_id = profile.get("citizen_id")
@@ -92,6 +94,8 @@ def appointment_cancel(state: AgentState) -> dict:
         return {
             "messages": [AIMessage(content=msg)],
             "completed_intents": mark_completed(state, "appointment_cancel"),
+            "service_node_name": "appointment_cancel",
+            "api_calls_count": 1,
         }
 
     # Try to detect which appointment from conversation context
@@ -129,6 +133,8 @@ def appointment_cancel(state: AgentState) -> dict:
                 return {
                     "messages": [AIMessage(content=msg)],
                     "completed_intents": mark_completed(state, "appointment_cancel"),
+                    "service_node_name": "appointment_cancel",
+                    "api_calls_count": 2,  # fetch + cancel
                 }
 
     if len(confirmed) == 1:
@@ -151,6 +157,8 @@ def appointment_cancel(state: AgentState) -> dict:
         return {
             "messages": [AIMessage(content=msg)],
             "completed_intents": mark_completed(state, "appointment_cancel"),
+            "service_node_name": "appointment_cancel",
+            "api_calls_count": 2,  # fetch + cancel
         }
 
     # Multiple appointments, no match — list them
@@ -168,4 +176,4 @@ def appointment_cancel(state: AgentState) -> dict:
         msg += "Hangisini iptal etmek istersiniz?"
 
     logger.info(f"Appointment cancel | citizen={first_name} | listing {len(confirmed)} appointments")
-    return {"messages": [AIMessage(content=msg)]}
+    return {"messages": [AIMessage(content=msg)], "service_node_name": "appointment_cancel", "api_calls_count": 1}

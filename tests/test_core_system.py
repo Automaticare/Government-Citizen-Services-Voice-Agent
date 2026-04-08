@@ -48,6 +48,9 @@ def make_state(**overrides) -> AgentState:
         "rag_score": None,
         "timing_intent_classify": None,
         "timing_service_node": None,
+        "service_node_name": None,
+        "tool_chain_triggered": None,
+        "api_calls_count": None,
         "prompt_version": "v1.0",
         "language": "en",
     }
@@ -1381,8 +1384,9 @@ class TestStateValidation:
         required_fields = [
             "messages", "auth_status", "citizen_profile", "current_intent",
             "completed_intents", "workflow_node", "rag_query", "rag_score",
-            "timing_intent_classify", "timing_service_node", "prompt_version",
-            "language",
+            "timing_intent_classify", "timing_service_node",
+            "service_node_name", "tool_chain_triggered", "api_calls_count",
+            "prompt_version", "language",
         ]
         for field in required_fields:
             assert field in state, f"Missing field: {field}"

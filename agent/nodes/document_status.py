@@ -40,6 +40,8 @@ def document_status(state: AgentState) -> dict:
         return {
             "messages": [AIMessage(content=msg)],
             "completed_intents": mark_completed(state, "document_status"),
+            "service_node_name": "document_status",
+            "api_calls_count": 0,
         }
 
     citizen_id = profile.get("citizen_id")
@@ -74,4 +76,6 @@ def document_status(state: AgentState) -> dict:
     return {
         "messages": [AIMessage(content=msg)],
         "completed_intents": mark_completed(state, "document_status"),
+        "service_node_name": "document_status",
+        "api_calls_count": 1 if citizen_id else 0,
     }

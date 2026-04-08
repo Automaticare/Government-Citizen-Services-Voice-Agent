@@ -169,4 +169,6 @@ def escalate(state: AgentState) -> dict:
     return {
         "messages": [msg],
         "completed_intents": mark_completed(state, "escalate"),
+        "service_node_name": "escalate",
+        "api_calls_count": 1,  # handoff log
     }

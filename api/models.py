@@ -127,6 +127,9 @@ class ConversationLog(Base):
     rag_query = Column(String, nullable=True)  # RAG search query (if faq intent)
     rag_score = Column(Float, nullable=True)  # Top RAG result relevance score
     intent_classify_ms = Column(Integer, nullable=True)  # Intent classification time
+    service_node_name = Column(String, nullable=True)  # which LangGraph service node ran
+    tool_chain_triggered = Column(String, nullable=True)  # tool chain (e.g. "status->rag_docs")
+    api_calls_count = Column(Integer, nullable=True)  # number of API calls made by node
 
 
 def init_db():

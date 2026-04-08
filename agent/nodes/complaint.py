@@ -35,4 +35,6 @@ def complaint(state: AgentState) -> dict:
     return {
         "messages": [AIMessage(content=msg)],
         "completed_intents": mark_completed(state, "complaint"),
+        "service_node_name": "complaint",
+        "api_calls_count": 0,
     }

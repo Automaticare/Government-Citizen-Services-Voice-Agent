@@ -40,6 +40,8 @@ def appointment_list(state: AgentState) -> dict:
         return {
             "messages": [AIMessage(content=msg)],
             "completed_intents": mark_completed(state, "appointment_list"),
+            "service_node_name": "appointment_list",
+            "api_calls_count": 0,
         }
 
     citizen_id = profile.get("citizen_id")
@@ -76,4 +78,6 @@ def appointment_list(state: AgentState) -> dict:
     return {
         "messages": [AIMessage(content=msg)],
         "completed_intents": mark_completed(state, "appointment_list"),
+        "service_node_name": "appointment_list",
+        "api_calls_count": 1 if citizen_id else 0,
     }
