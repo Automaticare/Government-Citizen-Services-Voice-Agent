@@ -1249,17 +1249,21 @@ None
 Identify and remove dead code, unused imports, debug artifacts, and stale references across the codebase. Ensure no orphaned files or unreachable code paths remain.
 
 ## Tasks
-- [ ] Scan for unused imports across all Python files
+- [x] Scan for unused imports across all Python files
 - [ ] Remove data/last_system_prompt.txt debug logging from server.py
-- [ ] Verify auth_collect.py is fully removed (no stale references)
-- [ ] Check for unreachable code paths in graph.py (e.g., workflow_node routing)
+- [x] Verify auth_collect.py is fully removed (no stale references)
+- [x] Check for unreachable code paths in graph.py (e.g., workflow_node routing)
+- [x] Remove build_auth_workflow() from deploy.py (165 lines, never called)
+- [x] Remove dead Pydantic classes + TOOL_SCHEMAS + get_all_tool_schemas() from schemas.py
+- [x] Remove unused timer() from utils.py
+- [x] Clean test_schemas.py to match slimmed schemas.py
 - [ ] Remove any hardcoded test values or TODO comments
 - [ ] Verify all imports in __init__.py files
 
 ## Acceptance Criteria
-- [ ] No unused imports
+- [x] No unused imports
 - [ ] No debug artifacts in production code
-- [ ] No orphaned files
+- [x] No orphaned files
 - [ ] All tests still pass after cleanup
 
 ---

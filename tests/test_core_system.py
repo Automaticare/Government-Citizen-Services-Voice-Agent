@@ -1328,13 +1328,6 @@ class TestUtilities:
         result = mark_completed(state, "complaint")
         assert result == ["complaint"]
 
-    def test_timer_returns_milliseconds(self):
-        """Timer utility returns elapsed time in ms."""
-        from agent.nodes.utils import timer
-        elapsed = timer()
-        time.sleep(0.05)
-        ms = elapsed()
-        assert ms >= 40  # At least 40ms (accounting for timing imprecision)
 
 
 # ===================================================================
