@@ -1,12 +1,12 @@
 """
 Streamlit Analytics Dashboard for Citizen Services Voice Agent.
 
-Tab-based layout:
+Multi-page layout with sidebar navigation:
 1. Overview — KPIs, call volume, resolution
 2. Intents & Performance — intent distribution, response times, node timing
 3. Auth & Language — authentication metrics, language breakdown
 4. Knowledge Gaps — RAG score analysis, low-score queries
-5. Conversation Flows — node transition visualization (placeholder)
+5. Conversation Flows — Sankey diagram, common paths, entry/exit points
 6. System Health — anomaly detection, thresholds
 7. AI Insights — LLM-powered recommendations
 8. Logs — recent conversations table
@@ -25,100 +25,76 @@ from sqlalchemy import create_engine
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data/citizens.db")
-engine = create_engine(DATABASE_URL)
-
-
-def load_conversation_logs() -> pd.DataFrame:
-    """Load conversation logs from database."""
-    try:
-        return pd.read_sql("SELECT * FROM conversation_logs ORDER BY timestamp DESC", engine)
-    except Exception:
-        return pd.DataFrame()
-
-
-def load_auth_audit_logs() -> pd.DataFrame:
-    """Load auth audit logs from database."""
-    try:
-        return pd.read_sql("SELECT * FROM auth_audit_log ORDER BY timestamp DESC", engine)
-    except Exception:
-        return pd.DataFrame()
-
-
-# --- Page config ---
 st.set_page_config(
     page_title="Citizen Services Analytics",
     page_icon="🏛️",
     layout="wide",
 )
 
-st.title("Citizen Services Voice Agent — Analytics")
-
-# --- Sidebar ---
-st.sidebar.header("Filters")
-
-date_range = st.sidebar.selectbox(
-    "Date Range",
-    ["Last 24 Hours", "Last 7 Days", "Last 30 Days", "All Time"],
-    index=3,
-)
-
-auto_refresh = st.sidebar.checkbox("Auto-refresh (30s)", value=False)
-if auto_refresh:
-    st.rerun()
-
-# Load data
-df = load_conversation_logs()
-auth_df = load_auth_audit_logs()
-
-if df.empty:
-    st.warning("No conversation data yet. Start a conversation to see analytics.")
-    st.stop()
-
-# Parse timestamps
-df["timestamp"] = pd.to_datetime(df["timestamp"])
-
-# Apply date filter
-now = datetime.utcnow()
-if date_range == "Last 24 Hours":
-    df = df[df["timestamp"] > now - timedelta(hours=24)]
-elif date_range == "Last 7 Days":
-    df = df[df["timestamp"] > now - timedelta(days=7)]
-elif date_range == "Last 30 Days":
-    df = df[df["timestamp"] > now - timedelta(days=30)]
-
-if df.empty:
-    st.info("No data for the selected date range.")
-    st.stop()
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data/citizens.db")
+engine = create_engine(DATABASE_URL)
 
 
-# --- Pre-compute shared metrics ---
-total_requests = len(df)
-unique_conversations = df["conversation_id"].nunique()
-avg_response_ms = df["response_time_ms"].mean() if df["response_time_ms"].notna().any() else 0
-escalated = (df["intent"] == "escalate").sum()
-resolved = total_requests - escalated
-resolution_rate = resolved / max(1, total_requests) * 100
-escalation_rate = escalated / max(1, total_requests) * 100
+# --- Data loading (cached, shared across pages) ---
+
+@st.cache_data(ttl=30)
+def load_conversation_logs() -> pd.DataFrame:
+    try:
+        return pd.read_sql("SELECT * FROM conversation_logs ORDER BY timestamp DESC", engine)
+    except Exception:
+        return pd.DataFrame()
 
 
-# --- Tabs ---
-tab_overview, tab_intents, tab_auth, tab_knowledge, tab_flows, tab_health, tab_insights, tab_logs = st.tabs([
-    "Overview",
-    "Intents & Performance",
-    "Auth & Language",
-    "Knowledge Gaps",
-    "Conversation Flows",
-    "System Health",
-    "AI Insights",
-    "Logs",
-])
+@st.cache_data(ttl=30)
+def load_auth_audit_logs() -> pd.DataFrame:
+    try:
+        return pd.read_sql("SELECT * FROM auth_audit_log ORDER BY timestamp DESC", engine)
+    except Exception:
+        return pd.DataFrame()
+
+
+def get_filtered_data():
+    """Load and filter data based on sidebar date range. Returns (df, auth_df) or stops."""
+    df = load_conversation_logs()
+    auth_df = load_auth_audit_logs()
+
+    if df.empty:
+        st.warning("No conversation data yet. Start a conversation to see analytics.")
+        st.stop()
+
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+
+    date_range = st.session_state.get("date_range", "All Time")
+    now = datetime.utcnow()
+    if date_range == "Last 24 Hours":
+        df = df[df["timestamp"] > now - timedelta(hours=24)]
+    elif date_range == "Last 7 Days":
+        df = df[df["timestamp"] > now - timedelta(days=7)]
+    elif date_range == "Last 30 Days":
+        df = df[df["timestamp"] > now - timedelta(days=30)]
+
+    if df.empty:
+        st.info("No data for the selected date range.")
+        st.stop()
+
+    return df, auth_df
 
 
 # =====================================================
-# TAB 1: OVERVIEW
+# PAGE: OVERVIEW
 # =====================================================
-with tab_overview:
+def page_overview():
+    st.header("Overview")
+    df, auth_df = get_filtered_data()
+
+    total_requests = len(df)
+    unique_conversations = df["conversation_id"].nunique()
+    avg_response_ms = df["response_time_ms"].mean() if df["response_time_ms"].notna().any() else 0
+    escalated = (df["intent"] == "escalate").sum()
+    resolved = total_requests - escalated
+    resolution_rate = resolved / max(1, total_requests) * 100
+    escalation_rate = escalated / max(1, total_requests) * 100
+
     # KPIs
     col1, col2, col3, col4, col5 = st.columns(5)
     col1.metric("Total Requests", total_requests)
@@ -129,7 +105,6 @@ with tab_overview:
 
     st.divider()
 
-    # Call volume + turns
     col1, col2 = st.columns(2)
 
     with col1:
@@ -149,7 +124,6 @@ with tab_overview:
 
     st.divider()
 
-    # Resolution breakdown
     st.subheader("Resolution Breakdown")
     col1, col2 = st.columns(2)
 
@@ -175,10 +149,12 @@ with tab_overview:
 
 
 # =====================================================
-# TAB 2: INTENTS & PERFORMANCE
+# PAGE: INTENTS & PERFORMANCE
 # =====================================================
-with tab_intents:
-    # Intent distribution + table side by side
+def page_intents():
+    st.header("Intents & Performance")
+    df, _ = get_filtered_data()
+
     col1, col2 = st.columns(2)
 
     with col1:
@@ -199,7 +175,6 @@ with tab_intents:
 
     st.divider()
 
-    # Response time overview
     st.subheader("Response Time")
 
     if df["response_time_ms"].notna().any():
@@ -217,7 +192,6 @@ with tab_intents:
 
     st.divider()
 
-    # Node-level timing
     st.subheader("Node-Level Timing")
 
     if "intent_classify_ms" in df.columns and df["intent_classify_ms"].notna().any():
@@ -239,7 +213,6 @@ with tab_intents:
                 col_a.metric("Avg", f"{both['service_ms'].mean():.0f}ms")
                 col_b.metric("P95", f"{both['service_ms'].quantile(0.95):.0f}ms")
 
-        # Per-intent breakdown table
         timing_df = df[df["intent_classify_ms"].notna()].copy()
         if not timing_df.empty:
             timing_df["service_ms"] = timing_df["response_time_ms"] - timing_df["intent_classify_ms"]
@@ -255,10 +228,12 @@ with tab_intents:
 
 
 # =====================================================
-# TAB 3: AUTH & LANGUAGE
+# PAGE: AUTH & LANGUAGE
 # =====================================================
-with tab_auth:
-    # Auth KPIs
+def page_auth():
+    st.header("Auth & Language")
+    df, auth_df = get_filtered_data()
+
     st.subheader("Authentication")
 
     auth_count = (df["auth_status"] == "authenticated").sum()
@@ -294,7 +269,6 @@ with tab_auth:
 
     st.divider()
 
-    # Language
     st.subheader("Language")
 
     col1, col2 = st.columns(2)
@@ -316,16 +290,18 @@ with tab_auth:
 
 
 # =====================================================
-# TAB 4: KNOWLEDGE GAPS
+# PAGE: KNOWLEDGE GAPS
 # =====================================================
-with tab_knowledge:
+def page_knowledge():
+    st.header("Knowledge Gaps")
+    df, _ = get_filtered_data()
+
     rag_df = df[df["rag_query"].notna() & (df["rag_query"] != "")]
 
     if not rag_df.empty:
         col1, col2, col3 = st.columns(3)
         avg_rag = rag_df["rag_score"].mean()
         low_score = rag_df[rag_df["rag_score"] < 0.4]
-        high_score = rag_df[rag_df["rag_score"] >= 0.7]
 
         col1.metric("Total RAG Queries", len(rag_df))
         col2.metric("Avg Score", f"{avg_rag:.2f}")
@@ -354,178 +330,155 @@ with tab_knowledge:
 
 
 # =====================================================
-# TAB 5: CONVERSATION FLOWS
+# PAGE: CONVERSATION FLOWS
 # =====================================================
-with tab_flows:
+def page_flows():
+    st.header("Conversation Flows")
+    df, _ = get_filtered_data()
 
-    # Build intent transitions per conversation
     flow_df = df[df["intent"].notna() & (df["intent"] != "")].sort_values(["conversation_id", "timestamp"])
     conversations = flow_df.groupby("conversation_id")["intent"].apply(list).reset_index()
     conversations.columns = ["conversation_id", "intents"]
-
-    # Only keep conversations with at least one intent
     conversations = conversations[conversations["intents"].apply(len) >= 1]
 
     if conversations.empty:
         st.info("No conversation flow data yet. Conversations will populate this section.")
-    else:
-        # --- Sankey diagram: intent transitions ---
-        st.subheader("Intent Transition Flow")
-        st.caption("How conversations move between intents. Thicker links = more frequent transitions.")
+        return
 
-        # Count transitions: START → first intent, intent → intent, last intent → END
-        from collections import Counter
-        transitions = Counter()
-        first_intents = Counter()
-        last_intents = Counter()
+    # Sankey diagram
+    st.subheader("Intent Transition Flow")
+    st.caption("How conversations move between intents. Thicker links = more frequent transitions.")
 
-        for _, row in conversations.iterrows():
-            intents = row["intents"]
-            first_intents[intents[0]] += 1
-            last_intents[intents[-1]] += 1
-            for i in range(len(intents) - 1):
-                if intents[i] != intents[i + 1]:  # Skip self-loops
-                    transitions[(intents[i], intents[i + 1])] += 1
+    from collections import Counter
+    transitions = Counter()
+    first_intents = Counter()
+    last_intents = Counter()
 
-        # Build Sankey nodes and links
-        all_intents = sorted(set(
-            list(first_intents.keys()) +
-            list(last_intents.keys()) +
-            [t[0] for t in transitions.keys()] +
-            [t[1] for t in transitions.keys()]
-        ))
-        node_labels = ["START"] + all_intents + ["END"]
-        node_idx = {label: i for i, label in enumerate(node_labels)}
+    for _, row in conversations.iterrows():
+        intents = row["intents"]
+        first_intents[intents[0]] += 1
+        last_intents[intents[-1]] += 1
+        for i in range(len(intents) - 1):
+            if intents[i] != intents[i + 1]:
+                transitions[(intents[i], intents[i + 1])] += 1
 
-        sources = []
-        targets = []
-        values = []
+    all_intents = sorted(set(
+        list(first_intents.keys()) +
+        list(last_intents.keys()) +
+        [t[0] for t in transitions.keys()] +
+        [t[1] for t in transitions.keys()]
+    ))
+    node_labels = ["START"] + all_intents + ["END"]
+    node_idx = {label: i for i, label in enumerate(node_labels)}
 
-        # START → first intent
-        for intent, count in first_intents.items():
-            sources.append(node_idx["START"])
-            targets.append(node_idx[intent])
-            values.append(count)
+    sources, targets, values = [], [], []
 
-        # intent → intent transitions
-        for (src, tgt), count in transitions.items():
-            sources.append(node_idx[src])
-            targets.append(node_idx[tgt])
-            values.append(count)
+    for intent, count in first_intents.items():
+        sources.append(node_idx["START"])
+        targets.append(node_idx[intent])
+        values.append(count)
 
-        # last intent → END
-        for intent, count in last_intents.items():
-            sources.append(node_idx[intent])
-            targets.append(node_idx["END"])
-            values.append(count)
+    for (src, tgt), count in transitions.items():
+        sources.append(node_idx[src])
+        targets.append(node_idx[tgt])
+        values.append(count)
 
-        # Color nodes by type
-        node_colors = []
-        for label in node_labels:
-            if label in ("START", "END"):
-                node_colors.append("#6c757d")
-            elif label == "escalate":
-                node_colors.append("#dc3545")
-            elif label == "complaint":
-                node_colors.append("#fd7e14")
-            elif label in ("faq", "fee_inquiry"):
-                node_colors.append("#0d6efd")
-            elif label in ("status_check", "document_status", "appointment_list"):
-                node_colors.append("#198754")
-            elif label in ("appointment_book", "document_request"):
-                node_colors.append("#6f42c1")
-            elif label == "appointment_cancel":
-                node_colors.append("#e83e8c")
-            else:
-                node_colors.append("#adb5bd")
+    for intent, count in last_intents.items():
+        sources.append(node_idx[intent])
+        targets.append(node_idx["END"])
+        values.append(count)
 
-        import plotly.graph_objects as go
+    node_colors = []
+    for label in node_labels:
+        if label in ("START", "END"):
+            node_colors.append("#6c757d")
+        elif label == "escalate":
+            node_colors.append("#dc3545")
+        elif label == "complaint":
+            node_colors.append("#fd7e14")
+        elif label in ("faq", "fee_inquiry"):
+            node_colors.append("#0d6efd")
+        elif label in ("status_check", "document_status", "appointment_list"):
+            node_colors.append("#198754")
+        elif label in ("appointment_book", "document_request"):
+            node_colors.append("#6f42c1")
+        elif label == "appointment_cancel":
+            node_colors.append("#e83e8c")
+        else:
+            node_colors.append("#adb5bd")
 
-        fig = go.Figure(data=[go.Sankey(
-            node=dict(
-                pad=20,
-                thickness=25,
-                label=node_labels,
-                color=node_colors,
-            ),
-            link=dict(
-                source=sources,
-                target=targets,
-                value=values,
-                color="rgba(150, 150, 150, 0.3)",
-            ),
-        )])
-        fig.update_layout(
-            height=450,
-            margin=dict(l=20, r=20, t=20, b=20),
-        )
-        st.plotly_chart(fig, use_container_width=True)
+    import plotly.graph_objects as go
 
-        st.divider()
+    fig = go.Figure(data=[go.Sankey(
+        node=dict(pad=20, thickness=25, label=node_labels, color=node_colors),
+        link=dict(source=sources, target=targets, value=values, color="rgba(150,150,150,0.3)"),
+    )])
+    fig.update_layout(height=450, margin=dict(l=20, r=20, t=20, b=20))
+    st.plotly_chart(fig, use_container_width=True)
 
-        # --- Common paths ---
-        st.subheader("Most Common Conversation Paths")
+    st.divider()
 
-        path_counts = conversations["intents"].apply(lambda x: " → ".join(x)).value_counts().head(10)
-        if not path_counts.empty:
-            path_table = path_counts.reset_index()
-            path_table.columns = ["Path", "Count"]
-            st.dataframe(path_table, hide_index=True, use_container_width=True)
+    st.subheader("Most Common Conversation Paths")
+    path_counts = conversations["intents"].apply(lambda x: " -> ".join(x)).value_counts().head(10)
+    if not path_counts.empty:
+        path_table = path_counts.reset_index()
+        path_table.columns = ["Path", "Count"]
+        st.dataframe(path_table, hide_index=True, use_container_width=True)
 
-        st.divider()
+    st.divider()
 
-        # --- Drop-off and bottleneck analysis ---
-        col1, col2 = st.columns(2)
+    col1, col2 = st.columns(2)
 
-        with col1:
-            st.subheader("First Intent (Entry Points)")
-            st.caption("What citizens ask for first")
-            first_df = pd.DataFrame(first_intents.items(), columns=["Intent", "Count"]).sort_values("Count", ascending=False)
-            st.dataframe(first_df, hide_index=True, use_container_width=True)
+    with col1:
+        st.subheader("Entry Points")
+        st.caption("What citizens ask for first")
+        first_df = pd.DataFrame(first_intents.items(), columns=["Intent", "Count"]).sort_values("Count", ascending=False)
+        st.dataframe(first_df, hide_index=True, use_container_width=True)
 
-        with col2:
-            st.subheader("Last Intent (Exit Points)")
-            st.caption("Where conversations end — escalate/complaint here may indicate drop-off")
-            last_df = pd.DataFrame(last_intents.items(), columns=["Intent", "Count"]).sort_values("Count", ascending=False)
-            st.dataframe(last_df, hide_index=True, use_container_width=True)
+    with col2:
+        st.subheader("Exit Points")
+        st.caption("Where conversations end")
+        last_df = pd.DataFrame(last_intents.items(), columns=["Intent", "Count"]).sort_values("Count", ascending=False)
+        st.dataframe(last_df, hide_index=True, use_container_width=True)
 
-        # Multi-intent vs single-intent
-        st.divider()
-        st.subheader("Conversation Depth")
-        conversations["depth"] = conversations["intents"].apply(len)
-        col1, col2, col3 = st.columns(3)
-        single = (conversations["depth"] == 1).sum()
-        multi = (conversations["depth"] > 1).sum()
-        avg_depth = conversations["depth"].mean()
-        col1.metric("Single-Intent", single)
-        col2.metric("Multi-Intent", multi)
-        col3.metric("Avg Intents/Conversation", f"{avg_depth:.1f}")
+    st.divider()
 
-        depth_dist = conversations["depth"].value_counts().sort_index()
-        st.bar_chart(depth_dist)
+    st.subheader("Conversation Depth")
+    conversations["depth"] = conversations["intents"].apply(len)
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Single-Intent", (conversations["depth"] == 1).sum())
+    col2.metric("Multi-Intent", (conversations["depth"] > 1).sum())
+    col3.metric("Avg Intents/Conv", f"{conversations['depth'].mean():.1f}")
+    st.bar_chart(conversations["depth"].value_counts().sort_index())
 
 
 # =====================================================
-# TAB 6: SYSTEM HEALTH
+# PAGE: SYSTEM HEALTH
 # =====================================================
-with tab_health:
+def page_health():
+    st.header("System Health")
+    df, auth_df = get_filtered_data()
+
+    total_requests = len(df)
+    escalated = (df["intent"] == "escalate").sum()
+    resolved = total_requests - escalated
+    resolution_rate = resolved / max(1, total_requests) * 100
+    escalation_rate = escalated / max(1, total_requests) * 100
+    avg_response_ms = df["response_time_ms"].mean() if df["response_time_ms"].notna().any() else 0
+
     anomalies = []
 
-    # 1. Escalation rate (threshold: 20%)
     if escalation_rate > 20:
         anomalies.append(("🔴", "High Escalation Rate", f"{escalation_rate:.1f}% (threshold: 20%)"))
     elif escalation_rate > 10:
         anomalies.append(("🟡", "Elevated Escalation Rate", f"{escalation_rate:.1f}% (threshold: 20%)"))
 
-    # 2. Response time (threshold: 3000ms)
     if df["response_time_ms"].notna().any():
-        avg_resp = df["response_time_ms"].mean()
-        if avg_resp > 3000:
-            anomalies.append(("🔴", "High Response Latency", f"{avg_resp:.0f}ms avg (threshold: 3000ms)"))
-        elif avg_resp > 2000:
-            anomalies.append(("🟡", "Elevated Response Latency", f"{avg_resp:.0f}ms avg (threshold: 3000ms)"))
+        if avg_response_ms > 3000:
+            anomalies.append(("🔴", "High Response Latency", f"{avg_response_ms:.0f}ms avg (threshold: 3000ms)"))
+        elif avg_response_ms > 2000:
+            anomalies.append(("🟡", "Elevated Response Latency", f"{avg_response_ms:.0f}ms avg (threshold: 3000ms)"))
 
-    # 3. Auth failure rate (threshold: 30%)
     auth_fail_rate = 0
     if not auth_df.empty:
         total_auth = len(auth_df)
@@ -536,13 +489,11 @@ with tab_health:
         elif auth_fail_rate > 15:
             anomalies.append(("🟡", "Elevated Auth Failure Rate", f"{auth_fail_rate:.0f}% ({auth_failures}/{total_auth})"))
 
-    # 4. Resolution rate (threshold: 70%)
     if resolution_rate < 70:
         anomalies.append(("🔴", "Low Resolution Rate", f"{resolution_rate:.0f}% (threshold: 70%)"))
     elif resolution_rate < 85:
         anomalies.append(("🟡", "Below Target Resolution", f"{resolution_rate:.0f}% (threshold: 85%)"))
 
-    # 5. Volume anomaly
     df_hourly = df.copy()
     df_hourly["hour"] = df_hourly["timestamp"].dt.floor("h")
     hourly_counts = df_hourly.groupby("hour").size()
@@ -554,7 +505,6 @@ with tab_health:
         elif last_hour < avg_hourly * 0.3 and avg_hourly > 3:
             anomalies.append(("🟡", "Volume Drop", f"Last hour: {last_hour} (avg: {avg_hourly:.0f})"))
 
-    # Display
     if not anomalies:
         st.success("All systems healthy — no anomalies detected")
     else:
@@ -563,7 +513,6 @@ with tab_health:
 
     st.divider()
 
-    # Health summary
     st.subheader("Thresholds")
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Escalation Rate", f"{escalation_rate:.1f}%")
@@ -573,9 +522,12 @@ with tab_health:
 
 
 # =====================================================
-# TAB 7: AI INSIGHTS
+# PAGE: AI INSIGHTS
 # =====================================================
-with tab_insights:
+def page_insights():
+    st.header("AI Insights")
+    df, auth_df = get_filtered_data()
+
     st.caption("Powered by GPT-4o + ElevenLabs documentation RAG")
 
     if st.button("Generate Insights"):
@@ -599,9 +551,48 @@ with tab_insights:
 
 
 # =====================================================
-# TAB 8: LOGS
+# PAGE: LOGS
 # =====================================================
-with tab_logs:
-    st.subheader("Recent Conversations")
-    recent = df.head(50)[["timestamp", "conversation_id", "intent", "workflow_node", "auth_status", "language", "message_count", "response_time_ms"]]
+def page_logs():
+    st.header("Conversation Logs")
+    df, _ = get_filtered_data()
+
+    recent = df.head(100)[["timestamp", "conversation_id", "intent", "workflow_node", "auth_status", "language", "message_count", "response_time_ms"]]
     st.dataframe(recent, hide_index=True, use_container_width=True)
+
+
+# =====================================================
+# NAVIGATION
+# =====================================================
+
+# Sidebar: navigation + filters
+pages = {
+    "Overview": page_overview,
+    "Intents & Performance": page_intents,
+    "Auth & Language": page_auth,
+    "Knowledge Gaps": page_knowledge,
+    "Conversation Flows": page_flows,
+    "System Health": page_health,
+    "AI Insights": page_insights,
+    "Logs": page_logs,
+}
+
+st.sidebar.title("Navigation")
+selection = st.sidebar.radio("Go to", list(pages.keys()))
+
+st.sidebar.divider()
+st.sidebar.header("Filters")
+
+date_range = st.sidebar.selectbox(
+    "Date Range",
+    ["Last 24 Hours", "Last 7 Days", "Last 30 Days", "All Time"],
+    index=3,
+    key="date_range",
+)
+
+auto_refresh = st.sidebar.checkbox("Auto-refresh (30s)", value=False)
+if auto_refresh:
+    st.rerun()
+
+# Render selected page
+pages[selection]()

@@ -1596,3 +1596,59 @@ The test suite has significant overlap between `test_graph.py` and `test_core_sy
 - [x] All unique test scenarios preserved
 - [x] Single comprehensive test file per concern (core system, API services, auth, etc.)
 - [x] Total test count stable or improved after cleanup
+
+---
+
+# ISSUE-42: Dashboard Sidebar Navigation
+
+## Module
+Analytics Dashboard
+
+## Priority
+P1
+
+## Dependencies
+ISSUE-19
+
+## Description
+Restructure dashboard from single-page tab layout to multi-page sidebar navigation. Each analytics section becomes its own page accessible from the left sidebar menu.
+
+## Tasks
+- [x] Convert 8 tabs to 8 page functions with sidebar radio navigation
+- [x] Move date range filter and auto-refresh to sidebar below navigation
+- [x] Add `@st.cache_data` for data loading (30s TTL)
+- [x] Shared `get_filtered_data()` helper for all pages
+
+## Acceptance Criteria
+- [x] Sidebar shows all pages with clean navigation
+- [x] Date filter persists across page switches
+- [x] Each page loads independently
+- [x] No duplicate set_page_config calls
+
+---
+
+# ISSUE-43: LangGraph Node Details Page
+
+## Module
+Analytics Dashboard
+
+## Priority
+P1
+
+## Dependencies
+ISSUE-42
+
+## Description
+Add detailed LangGraph node analytics page to dashboard. Track per-node performance, tool chain triggers, and API call counts. Requires new fields in ConversationLog.
+
+## Tasks
+- [ ] Add fields to ConversationLog: service_node_name, tool_chain_triggered, api_calls_count
+- [ ] Update server.py to extract these from graph result
+- [ ] New dashboard page: Node Details — per-node timing, success/error, RAG chain rate, API calls
+- [ ] Integrate into sidebar navigation
+
+## Acceptance Criteria
+- [ ] Each LangGraph node has per-node metrics visible
+- [ ] Tool chain triggers tracked (e.g. status → RAG)
+- [ ] API call counts per node visible
+- [ ] Page accessible from sidebar
