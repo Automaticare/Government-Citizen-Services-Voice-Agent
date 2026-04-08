@@ -274,10 +274,7 @@ async def chat_completions(request: ChatCompletionRequest):
     for msg in request.messages[:2]:
         if msg.role == "system":
             system_prompt_content = msg.content or ""
-            # Write full system prompt to file for inspection
-            with open("data/last_system_prompt.txt", "w", encoding="utf-8") as f:
-                f.write(system_prompt_content)
-            logger.info(f"System prompt length: {len(system_prompt_content)} (saved to data/last_system_prompt.txt)")
+            logger.info(f"System prompt length: {len(system_prompt_content)}")
 
     # Convert request messages to LangGraph format
     lc_messages = []

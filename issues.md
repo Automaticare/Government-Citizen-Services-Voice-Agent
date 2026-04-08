@@ -1250,19 +1250,19 @@ Identify and remove dead code, unused imports, debug artifacts, and stale refere
 
 ## Tasks
 - [x] Scan for unused imports across all Python files
-- [ ] Remove data/last_system_prompt.txt debug logging from server.py
+- [x] Remove data/last_system_prompt.txt debug logging from server.py
 - [x] Verify auth_collect.py is fully removed (no stale references)
 - [x] Check for unreachable code paths in graph.py (e.g., workflow_node routing)
 - [x] Remove build_auth_workflow() from deploy.py (165 lines, never called)
 - [x] Remove dead Pydantic classes + TOOL_SCHEMAS + get_all_tool_schemas() from schemas.py
 - [x] Remove unused timer() from utils.py
 - [x] Clean test_schemas.py to match slimmed schemas.py
-- [ ] Remove any hardcoded test values or TODO comments
-- [ ] Verify all imports in __init__.py files
+- [x] Remove any hardcoded test values or TODO comments (none found)
+- [x] Verify all imports in __init__.py files (all clean)
 
 ## Acceptance Criteria
 - [x] No unused imports
-- [ ] No debug artifacts in production code
+- [x] No debug artifacts in production code
 - [x] No orphaned files
 - [ ] All tests still pass after cleanup
 
