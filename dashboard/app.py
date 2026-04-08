@@ -562,6 +562,135 @@ def page_logs():
 
 
 # =====================================================
+# PAGE: NODE DETAILS
+# =====================================================
+def page_node_details():
+    st.header("LangGraph Node Details")
+    df, _ = get_filtered_data()
+
+    has_node_data = "service_node_name" in df.columns and df["service_node_name"].notna().any()
+
+    if not has_node_data:
+        st.info("No node-level data yet. Conversations after this update will populate this page.")
+        return
+
+    node_df = df[df["service_node_name"].notna() & (df["service_node_name"] != "")]
+
+    # --- Node KPIs ---
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total Node Executions", len(node_df))
+    col2.metric("Unique Nodes Used", node_df["service_node_name"].nunique())
+
+    has_tc = "tool_chain_triggered" in df.columns
+    if has_tc:
+        tc_count = node_df["tool_chain_triggered"].notna().sum()
+        col3.metric("Tool Chains Triggered", tc_count)
+
+    st.divider()
+
+    # --- Per-node breakdown table ---
+    st.subheader("Per-Node Performance")
+
+    agg_dict = {
+        "count": ("service_node_name", "size"),
+        "avg_response_ms": ("response_time_ms", "mean"),
+        "p95_response_ms": ("response_time_ms", lambda x: x.quantile(0.95) if x.notna().any() else 0),
+    }
+
+    has_api = "api_calls_count" in df.columns
+    if has_api:
+        agg_dict["total_api_calls"] = ("api_calls_count", "sum")
+        agg_dict["avg_api_calls"] = ("api_calls_count", "mean")
+
+    node_table = node_df.groupby("service_node_name").agg(**agg_dict).reset_index()
+    node_table["avg_response_ms"] = node_table["avg_response_ms"].round(0).astype(int)
+    node_table["p95_response_ms"] = node_table["p95_response_ms"].round(0).astype(int)
+
+    col_names = ["Node", "Count", "Avg (ms)", "P95 (ms)"]
+    if has_api:
+        node_table["total_api_calls"] = node_table["total_api_calls"].fillna(0).astype(int)
+        node_table["avg_api_calls"] = node_table["avg_api_calls"].round(1)
+        col_names += ["Total API Calls", "Avg API/Exec"]
+
+    node_table.columns = col_names
+    node_table = node_table.sort_values("Count", ascending=False)
+    st.dataframe(node_table, hide_index=True, use_container_width=True)
+
+    st.divider()
+
+    # --- Node distribution chart ---
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.subheader("Execution Count by Node")
+        node_counts = node_df["service_node_name"].value_counts()
+        st.bar_chart(node_counts)
+
+    with col2:
+        st.subheader("Avg Response Time by Node")
+        node_avg = node_df.groupby("service_node_name")["response_time_ms"].mean().dropna().sort_values(ascending=False)
+        if not node_avg.empty:
+            st.bar_chart(node_avg)
+
+    st.divider()
+
+    # --- Tool Chain Analysis ---
+    st.subheader("Tool Chain Analysis")
+    st.caption("Deterministic tool chaining — LangGraph's core differentiator")
+
+    if has_tc:
+        tc_df = node_df[node_df["tool_chain_triggered"].notna() & (node_df["tool_chain_triggered"] != "")]
+        if not tc_df.empty:
+            col1, col2 = st.columns(2)
+
+            with col1:
+                tc_counts = tc_df["tool_chain_triggered"].value_counts()
+                st.bar_chart(tc_counts)
+
+            with col2:
+                tc_table = tc_df.groupby("tool_chain_triggered").agg(
+                    count=("tool_chain_triggered", "size"),
+                    avg_ms=("response_time_ms", "mean"),
+                ).reset_index()
+                tc_table["avg_ms"] = tc_table["avg_ms"].round(0).astype(int)
+                tc_table.columns = ["Tool Chain", "Count", "Avg Response (ms)"]
+                st.dataframe(tc_table, hide_index=True, use_container_width=True)
+
+            # Tool chain rate per node
+            st.caption("Tool chain trigger rate by node")
+            for node in node_df["service_node_name"].unique():
+                node_total = len(node_df[node_df["service_node_name"] == node])
+                node_tc = len(tc_df[tc_df["service_node_name"] == node])
+                if node_tc > 0:
+                    rate = node_tc / node_total * 100
+                    st.text(f"  {node}: {node_tc}/{node_total} ({rate:.0f}%)")
+        else:
+            st.info("No tool chains triggered yet. Tool chains activate when status_check finds additional_docs_needed or rejected status.")
+    else:
+        st.info("Tool chain tracking not available yet.")
+
+    st.divider()
+
+    # --- API Calls Analysis ---
+    st.subheader("API Call Volume")
+
+    if has_api and node_df["api_calls_count"].notna().any():
+        col1, col2 = st.columns(2)
+
+        with col1:
+            total_api = node_df["api_calls_count"].sum()
+            avg_api = node_df["api_calls_count"].mean()
+            st.metric("Total API Calls", int(total_api))
+            st.metric("Avg API Calls/Request", f"{avg_api:.1f}")
+
+        with col2:
+            api_by_node = node_df.groupby("service_node_name")["api_calls_count"].sum().sort_values(ascending=False)
+            st.bar_chart(api_by_node)
+    else:
+        st.info("No API call data yet.")
+
+
+# =====================================================
 # NAVIGATION
 # =====================================================
 
@@ -572,6 +701,7 @@ pages = {
     "Auth & Language": page_auth,
     "Knowledge Gaps": page_knowledge,
     "Conversation Flows": page_flows,
+    "Node Details": page_node_details,
     "System Health": page_health,
     "AI Insights": page_insights,
     "Logs": page_logs,

@@ -1642,13 +1642,13 @@ ISSUE-42
 Add detailed LangGraph node analytics page to dashboard. Track per-node performance, tool chain triggers, and API call counts. Requires new fields in ConversationLog.
 
 ## Tasks
-- [ ] Add fields to ConversationLog: service_node_name, tool_chain_triggered, api_calls_count
-- [ ] Update server.py to extract these from graph result
-- [ ] New dashboard page: Node Details — per-node timing, success/error, RAG chain rate, API calls
-- [ ] Integrate into sidebar navigation
+- [x] Add fields to ConversationLog: service_node_name, tool_chain_triggered, api_calls_count
+- [x] Update server.py to extract these from graph result
+- [x] New dashboard page: Node Details — per-node timing, success/error, RAG chain rate, API calls
+- [x] Integrate into sidebar navigation
 
 ## Acceptance Criteria
-- [ ] Each LangGraph node has per-node metrics visible
-- [ ] Tool chain triggers tracked (e.g. status → RAG)
-- [ ] API call counts per node visible
-- [ ] Page accessible from sidebar
+- [x] Each LangGraph node has per-node metrics visible
+- [x] Tool chain triggers tracked (e.g. status → RAG)
+- [x] API call counts per node visible
+- [x] Page accessible from sidebar
