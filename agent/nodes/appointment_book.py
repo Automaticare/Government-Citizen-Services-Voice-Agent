@@ -11,7 +11,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 
 from agent.state import AgentState
 from agent.logging_config import get_logger
-from agent.nodes.utils import mark_completed
+from agent.nodes.utils import mark_completed, get_honorific
 
 logger = get_logger(__name__)
 
@@ -122,7 +122,7 @@ def appointment_book(state: AgentState) -> dict:
             "api_calls_count": 0,
         }
 
-    first_name = profile.get("first_name", "")
+    first_name = get_honorific(profile, language)
     citizen_id = profile.get("citizen_id")
 
     # Detect service type from conversation

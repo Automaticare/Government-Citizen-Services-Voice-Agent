@@ -63,6 +63,7 @@ PROFILE_SINGLE_APP = {
     "first_name": "John",
     "last_name_initial": "S***",
     "citizen_id": 21,
+    "gender": "M",
     "application_ref": "2024-EN-0001",
     "application_status": "approved",
     "language_preference": "en",
@@ -72,6 +73,7 @@ PROFILE_MULTI_APP = {
     "first_name": "Ahmet",
     "last_name_initial": "Y***",
     "citizen_id": 1,
+    "gender": "M",
     "application_ref": "2024-TR-0001",
     "application_status": "in_review",
     "language_preference": "en",
@@ -80,6 +82,7 @@ PROFILE_MULTI_APP = {
 PROFILE_NO_CITIZEN_ID = {
     "first_name": "TestUser",
     "last_name_initial": "T***",
+    "gender": "M",
     "application_ref": "2024-TR-9999",
     "application_status": "pending",
     "language_preference": "en",

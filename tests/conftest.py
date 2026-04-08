@@ -37,12 +37,14 @@ def setup_test_db():
         tc_kimlik_hash=hash_tc(tc_ahmet),
         first_name="Ahmet", last_name="Yilmaz",
         date_of_birth="15/03/1990",
+        gender="M",
         language_preference="tr",
     )
     fatma = Citizen(
         tc_kimlik_hash=hash_tc(tc_fatma),
         first_name="Fatma", last_name="Kaya",
         date_of_birth="22/07/1985",
+        gender="F",
         language_preference="tr",
     )
     db.add_all([ahmet, fatma])

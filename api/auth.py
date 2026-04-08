@@ -86,6 +86,7 @@ def _citizen_to_safe_profile(citizen: Citizen, db: Session) -> dict:
         "citizen_id": citizen.id,
         "first_name": citizen.first_name,
         "last_name_initial": citizen.last_name[0] + "***",
+        "gender": getattr(citizen, "gender", "M"),
         "language_preference": citizen.language_preference,
     }
 

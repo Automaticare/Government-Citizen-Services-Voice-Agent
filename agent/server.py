@@ -311,12 +311,25 @@ async def chat_completions(request: ChatCompletionRequest):
 
         if name_match:
             auth_status = "authenticated"
+            _citizen_id = int(id_match.group(1)) if id_match else None
             citizen_profile = {
                 "first_name": name_match.group(1),
-                "citizen_id": int(id_match.group(1)) if id_match else None,
+                "citizen_id": _citizen_id,
                 "application_ref": ref_match.group(1) if ref_match else "",
                 "application_status": status_match.group(1) if status_match else "",
+                "gender": "M",  # default, overridden below if DB available
             }
+            # Look up gender from DB
+            if _citizen_id:
+                try:
+                    from api.models import Citizen, SessionLocal
+                    _gdb = SessionLocal()
+                    _cit = _gdb.query(Citizen).filter(Citizen.id == _citizen_id).first()
+                    if _cit and hasattr(_cit, "gender"):
+                        citizen_profile["gender"] = _cit.gender
+                    _gdb.close()
+                except Exception:
+                    pass
             logger.info(f"Authenticated via dynamic variables: {citizen_profile}")
 
     # Detect post-auth first turn: if many messages (>8) and last user

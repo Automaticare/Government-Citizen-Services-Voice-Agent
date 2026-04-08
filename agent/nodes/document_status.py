@@ -9,7 +9,7 @@ from langchain_core.messages import AIMessage
 
 from agent.state import AgentState
 from agent.logging_config import get_logger
-from agent.nodes.utils import mark_completed
+from agent.nodes.utils import mark_completed, get_honorific
 
 logger = get_logger(__name__)
 
@@ -45,7 +45,7 @@ def document_status(state: AgentState) -> dict:
         }
 
     citizen_id = profile.get("citizen_id")
-    first_name = profile.get("first_name", "")
+    first_name = get_honorific(profile, language)
 
     docs = _fetch_document_requests(citizen_id) if citizen_id else []
 

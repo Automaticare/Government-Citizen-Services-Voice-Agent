@@ -19,7 +19,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 
 from agent.state import AgentState
 from agent.logging_config import get_logger
-from agent.nodes.utils import mark_completed
+from agent.nodes.utils import mark_completed, get_honorific
 from rag.retriever import search, format_context
 
 logger = get_logger(__name__)
@@ -204,7 +204,7 @@ def status_check(state: AgentState) -> dict:
         }
 
     citizen_id = profile.get("citizen_id")
-    first_name = profile.get("first_name", "")
+    first_name = get_honorific(profile, language)
     app_ref = profile.get("application_ref", "")
 
     # If citizen_id missing (post-auth from system prompt), look it up via app_ref

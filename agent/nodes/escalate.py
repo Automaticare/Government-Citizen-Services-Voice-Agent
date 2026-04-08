@@ -22,7 +22,7 @@ from langchain_openai import ChatOpenAI
 
 from agent.state import AgentState
 from agent.logging_config import get_logger
-from agent.nodes.utils import mark_completed
+from agent.nodes.utils import mark_completed, get_honorific
 
 logger = get_logger(__name__)
 
@@ -130,9 +130,9 @@ def escalate(state: AgentState) -> dict:
 
     # Add citizen info to summary if authenticated
     if profile:
-        first_name = profile.get("first_name", "")
+        honorific = get_honorific(profile, language)
         citizen_id = profile.get("citizen_id", "")
-        operator_summary = f"Vatandas: {first_name} (ID: {citizen_id}). {operator_summary}" if language != "en" else f"Citizen: {first_name} (ID: {citizen_id}). {operator_summary}"
+        operator_summary = f"Citizen: {honorific} (ID: {citizen_id}). {operator_summary}" if language == "en" else f"Vatandas: {honorific} (ID: {citizen_id}). {operator_summary}"
 
     # Log handoff
     _log_handoff(

@@ -30,33 +30,33 @@ def generate_valid_tc(first_9: str) -> str:
 
 
 # Fictional citizens with valid TC Kimlik checksums
-# (first_9_digits, first_name, last_name, father_name, dob, lang, phone)
+# (first_9_digits, first_name, last_name, father_name, dob, lang, phone, gender)
 # phone=None means no registered phone number (full KBA required)
 SEED_CITIZENS = [
-    ("100000001", "Ahmet", "Yilmaz", "Mehmet", "15/03/1990", "tr", "+905551000001"),
-    ("200000002", "Fatma", "Kaya", "Ali", "22/07/1985", "tr", "+905551000002"),
-    ("300000003", "Mehmet", "Demir", "Hasan", "01/01/1978", "tr", "+905551000003"),
-    ("400000004", "Ayse", "Celik", "Mustafa", "30/11/1995", "tr", None),
-    ("500000005", "Mustafa", "Sahin", "Ibrahim", "14/06/1982", "tr", None),
-    ("600000006", "Emine", "Yildiz", "Osman", "08/09/1973", "tr", "+905551000006"),
-    ("700000007", "Huseyin", "Ozturk", "Yusuf", "25/12/1988", "tr", None),
-    ("800000008", "Zeynep", "Aydin", "Kemal", "03/04/1992", "tr", None),
-    ("900000009", "Ali", "Arslan", "Huseyin", "19/10/1980", "tr", None),
-    ("110000001", "Hatice", "Dogan", "Ahmet", "27/02/1969", "tr", None),
-    ("120000001", "Ibrahim", "Kilic", "Omer", "11/08/1975", "tr", None),
-    ("130000001", "Meryem", "Koc", "Hasan", "05/05/1998", "tr", None),
-    ("140000001", "Hasan", "Ozdemir", "Ali", "16/01/1987", "tr", None),
-    ("150000001", "Elif", "Polat", "Mehmet", "29/09/1993", "tr", None),
-    ("160000001", "Omer", "Erdogan", "Mustafa", "07/12/1970", "tr", None),
-    ("170000001", "Sule", "Tas", "Ibrahim", "20/06/1984", "tr", None),
-    ("180000001", "Osman", "Cinar", "Yusuf", "12/03/1991", "tr", None),
-    ("190000001", "Merve", "Acar", "Kemal", "23/11/1996", "tr", None),
-    ("210000002", "Yusuf", "Kurt", "Osman", "04/07/1977", "tr", None),
-    ("220000002", "Busra", "Oz", "Ahmet", "18/04/1989", "tr", None),
+    ("100000001", "Ahmet", "Yilmaz", "Mehmet", "15/03/1990", "tr", "+905551000001", "M"),
+    ("200000002", "Fatma", "Kaya", "Ali", "22/07/1985", "tr", "+905551000002", "F"),
+    ("300000003", "Mehmet", "Demir", "Hasan", "01/01/1978", "tr", "+905551000003", "M"),
+    ("400000004", "Ayse", "Celik", "Mustafa", "30/11/1995", "tr", None, "F"),
+    ("500000005", "Mustafa", "Sahin", "Ibrahim", "14/06/1982", "tr", None, "M"),
+    ("600000006", "Emine", "Yildiz", "Osman", "08/09/1973", "tr", "+905551000006", "F"),
+    ("700000007", "Huseyin", "Ozturk", "Yusuf", "25/12/1988", "tr", None, "M"),
+    ("800000008", "Zeynep", "Aydin", "Kemal", "03/04/1992", "tr", None, "F"),
+    ("900000009", "Ali", "Arslan", "Huseyin", "19/10/1980", "tr", None, "M"),
+    ("110000001", "Hatice", "Dogan", "Ahmet", "27/02/1969", "tr", None, "F"),
+    ("120000001", "Ibrahim", "Kilic", "Omer", "11/08/1975", "tr", None, "M"),
+    ("130000001", "Meryem", "Koc", "Hasan", "05/05/1998", "tr", None, "F"),
+    ("140000001", "Hasan", "Ozdemir", "Ali", "16/01/1987", "tr", None, "M"),
+    ("150000001", "Elif", "Polat", "Mehmet", "29/09/1993", "tr", None, "F"),
+    ("160000001", "Omer", "Erdogan", "Mustafa", "07/12/1970", "tr", None, "M"),
+    ("170000001", "Sule", "Tas", "Ibrahim", "20/06/1984", "tr", None, "F"),
+    ("180000001", "Osman", "Cinar", "Yusuf", "12/03/1991", "tr", None, "M"),
+    ("190000001", "Merve", "Acar", "Kemal", "23/11/1996", "tr", None, "F"),
+    ("210000002", "Yusuf", "Kurt", "Osman", "04/07/1977", "tr", None, "M"),
+    ("220000002", "Busra", "Oz", "Ahmet", "18/04/1989", "tr", None, "F"),
     # English-preference citizens
-    ("230000002", "John", "Smith", "Robert", "10/02/1985", "en", "+15551000021"),
-    ("240000002", "Sarah", "Johnson", "Michael", "28/08/1992", "en", None),
-    ("250000002", "David", "Williams", "James", "15/05/1978", "en", None),
+    ("230000002", "John", "Smith", "Robert", "10/02/1985", "en", "+15551000021", "M"),
+    ("240000002", "Sarah", "Johnson", "Michael", "28/08/1992", "en", None, "F"),
+    ("250000002", "David", "Williams", "James", "15/05/1978", "en", None, "M"),
 ]
 
 # Applications: (citizen_index, ref, service_type, status, notes, submitted_date, last_updated, office)
@@ -183,7 +183,7 @@ def seed(reset: bool = False):
         # Seed citizens
         citizens = []
         for row in SEED_CITIZENS:
-            first_9, first_name, last_name, father_name, dob, lang, phone = row
+            first_9, first_name, last_name, father_name, dob, lang, phone, gender = row
             tc_kimlik = generate_valid_tc(first_9)
 
             citizen = Citizen(
@@ -192,6 +192,7 @@ def seed(reset: bool = False):
                 last_name=last_name,
                 father_name=father_name,
                 date_of_birth=dob,
+                gender=gender,
                 phone_number=phone,
                 language_preference=lang,
             )
