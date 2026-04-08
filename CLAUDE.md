@@ -49,17 +49,17 @@ Single FastAPI server (agent/server.py, port 8080):
 /agent              — LangGraph agent core
   /nodes            — Graph node implementations (intent_classify, status_check, appointment_list, appointment_cancel, document_status, etc.)
   /prompts          — Versioned system prompts (v1.0/system_prompt_tr.md, _en.md)
-  /tools            — Validators + schemas (tc_kimlik.py, app_ref.py, date_parser.py, schemas.py)
+  /tools            — Validators + schemas (tc_kimlik.py, app_ref.py, date_parser.py, schemas.py — system tools only)
   config.py         — AgentConfig dataclass (incl. custom_llm_url)
   deploy.py         — Programmatic agent deploy to ElevenLabs (conversation config, workflow preserved)
   graph.py          — LangGraph StateGraph definition
   logging_config.py — PII redaction logging
   server.py         — Custom LLM proxy + mounted gov API (/v1/chat/completions SSE, circuit breaker)
-  state.py          — AgentState TypedDict
+  state.py          — AgentState TypedDict (incl. node detail tracking fields)
 /api                — Government backend (mounted into agent/server.py)
   auth.py           — POST /auth/verify/tc-kimlik, /auth/verify/app-ref, /auth/verify/webhook
   handoff.py        — POST /handoff, POST /guest/info
-  models.py         — SQLAlchemy models (Citizen, Application, AuthAuditLog, Appointment, DocumentRequest)
+  models.py         — SQLAlchemy models (Citizen, Application, AuthAuditLog, Appointment, DocumentRequest, ConversationLog)
   seed_data.py      — 23 citizen records + 26 applications + 5 appointments + 3 doc requests seeder
   services.py       — GET /applications/{ref}, GET /applications, POST /appointments, DELETE /appointments/{id}, POST /documents/request, GET /documents/{citizen_id}, GET /services
   server.py         — Standalone FastAPI app (for independent testing)
@@ -67,11 +67,15 @@ Single FastAPI server (agent/server.py, port 8080):
   chunker.py        — Document chunking (header-based + size overlap)
   embed.py          — Embedding pipeline (OpenAI → Pinecone upsert)
   retriever.py      — Pinecone query with language/category filters
-/dashboard          — Streamlit analytics app (planned)
+/dashboard          — Streamlit analytics dashboard (9-page sidebar navigation)
+  app.py            — Multi-page dashboard (Overview, Intents, Auth, Knowledge Gaps, Flows, Node Details, Health, Insights, Logs)
+  insights.py       — LLM-powered recommendation engine (GPT-4o + ElevenLabs docs RAG)
 /data               — citizens.db (SQLite, gitignored), knowledge_base/ (40 docs + manifest.json)
 /docs               — auth_flow.md, conversation_flow.md
-/tests              — Unit, integration, edge case, and live API tests
+/tests              — Unit, integration, edge case, and live API tests (231 tests)
+  test_core_system.py — Comprehensive core system tests (104 tests, all product endings)
   conftest.py       — Shared test DB setup with per-test audit log cleanup
+  voice_e2e_test_roadmap.md — 31 manual voice test scenarios
   /eval             — Automated conversation evaluation (planned)
 ```
 
@@ -104,10 +108,11 @@ Single FastAPI server (agent/server.py, port 8080):
 - PII redaction is automatic — TC Kimlik (11 digits) and DOB patterns are masked before log output
 - Use `.env` for secrets, never commit API keys
 - System prompts live in versioned files under `/agent/prompts/`
-- Shared node utilities in `agent/nodes/utils.py` (e.g., mark_completed)
+- Shared node utilities in `agent/nodes/utils.py` (mark_completed)
 - `load_dotenv()` is called once in `agent/graph.py` — not in individual nodes
-- Tests: `python -m pytest tests/ -v` (166+ tests collected)
+- Tests: `python -m pytest tests/ -v` (231 tests collected)
 - Test DB: in-memory SQLite via conftest.py, audit log cleaned per test
+- Service nodes report `service_node_name`, `tool_chain_triggered`, `api_calls_count` to state for analytics
 
 ## User Preferences (for Claude)
 - User communicates in Turkish
@@ -158,7 +163,7 @@ make test-live         # Live API + simulation tests
 - **ISSUE-06:** Failure Handling — handoff endpoint, guest mode FAQ, 10 tests
 - **ISSUE-07:** LangGraph Workflow — 8-node graph, LLM intent classification, deterministic tool chaining, Custom LLM proxy with SSE streaming, 24 tests
 - **ISSUE-08:** Connect LangGraph to ElevenLabs Voice — transfer_to_number system tool call, buffer words, circuit breaker (Level 0/1/2 degradation), Custom LLM deploy config, backup_llm_config, conversation.py removed
-- **ISSUE-09:** Tool Schemas — 5 business tools (Pydantic validation + OpenAI format registry), 3 system tools (language_detection + end_call deployed, transfer_to_number deferred to Twilio), 22 tests
+- **ISSUE-09:** Tool Schemas — 3 system tools (language_detection + end_call deployed, transfer_to_number deferred to Twilio)
 - **ISSUE-10:** Knowledge Base — 40 documents (5 categories × 4 doc types × 2 languages), manifest.json
 - **ISSUE-11:** Embedding Pipeline — chunker (219 chunks from 40 docs, min 50 chars), OpenAI text-embedding-3-small, Pinecone serverless index, 5/5 validation queries passing
 - **ISSUE-12:** RAG Integration — faq_answer grounded in Pinecone (no hallucination), status_check chains to RAG for required docs + appeal rights
@@ -192,7 +197,8 @@ make test-live         # Live API + simulation tests
 - ✅ Document request with type detection — detects document type from conversation history
 - ✅ Clarifying questions for ambiguous requests
 - ✅ Multi-intent in single conversation — status check → appointment → document → complaint transitions
-- ✅ 166 tests, 19/20 e2e scenarios passing
+- ✅ 231 tests (104 core system + auth + services + edge cases + schemas + logging)
+- ✅ 31 manual voice e2e test scenarios documented
 
 ### Twilio Phone Integration (ISSUE-15B) — IN PROGRESS
 - Twilio trial account created, US number: +1 (740) 554-8808
@@ -202,15 +208,31 @@ make test-live         # Live API + simulation tests
 - Pending: Twilio personalization webhook for hybrid silent auth (caller_id → DB lookup)
 - Pending: E2E voice test when credits renewed
 
+### Analytics Dashboard — COMPLETE
+- 9-page Streamlit dashboard with sidebar navigation
+- Pages: Overview, Intents & Performance, Auth & Language, Knowledge Gaps, Conversation Flows (Sankey), Node Details, System Health, AI Insights, Logs
+- Node Details page: per-node timing, tool chain analysis, API call volume
+- Conversation Flows: Sankey diagram, common paths, entry/exit points, conversation depth
+- AI Insights: GPT-4o + ElevenLabs docs RAG recommendations (basic, deferred for multi-agent redesign)
+- ConversationLog tracks: intent, response_time_ms, intent_classify_ms, rag_query/score, service_node_name, tool_chain_triggered, api_calls_count
+
+### Dead Code Cleanup (ISSUE-36) — COMPLETE
+- Removed build_auth_workflow() from deploy.py (workflow managed via dashboard)
+- Removed dead Pydantic input classes + TOOL_SCHEMAS from schemas.py
+- Removed unused timer() from utils.py
+- Removed debug file write (last_system_prompt.txt) from server.py
+
+### Test Suite Consolidation (ISSUE-41) — COMPLETE
+- Merged test_graph.py (36 duplicate tests) into test_core_system.py
+- 231 total tests, 104 in comprehensive core system suite
+
 ### Technical Debt
 - Workflow backward edges don't trigger with Custom LLM — LangGraph handles topic changes via intent_classify as fallback
 - Service Router must use GPT-4o (not Custom LLM) for workflow edge transitions
 - Buffer words after auth ("kontrol ediyorum") — causes workflow edge issues, deferred
-- Server.py has debug logging (last_system_prompt.txt) — remove before production
+- 10 pre-existing test failures (Turkish simulation tests + appointment date hardcoding)
 
-### Remaining Issues (not started)
-- **ISSUE-15B:** Twilio Phone Integration
-- **ISSUE-18:** Human Handoff Implementation
-- **ISSUE-19-22:** Analytics Dashboard (Streamlit)
-- **ISSUE-23-25:** Testing & Quality
-- **ISSUE-26-28:** Documentation & Demo
+### Remaining Issues
+- **ISSUE-15B:** Twilio Phone Integration — blocked (credits exhausted)
+- **ISSUE-26-28:** Documentation & Demo — deferred (separate day)
+- **ISSUE-31, 35, 37-39:** Deferred to P3 (require production data volume)
