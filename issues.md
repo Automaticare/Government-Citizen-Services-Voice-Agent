@@ -1584,15 +1584,15 @@ The test suite has significant overlap between `test_graph.py` and `test_core_sy
 - **Circuit breaker**: 5 tests fully duplicated
 
 ## Tasks
-- [ ] Audit all test files for overlap (test_graph.py, test_core_system.py, test_edge_cases.py, test_services.py, etc.)
-- [ ] Merge unique tests from test_graph.py into test_core_system.py
-- [ ] Remove test_graph.py after migration
-- [ ] Standardize all tests on English language
-- [ ] Ensure no coverage loss after consolidation
-- [ ] Update test count in CLAUDE.md
+- [x] Audit all test files for overlap (test_graph.py, test_core_system.py, test_edge_cases.py, test_services.py, etc.)
+- [x] Merge unique tests from test_graph.py into test_core_system.py (Turkish escalation + SSE role check)
+- [x] Remove test_graph.py after migration
+- [x] Standardize all tests on English language
+- [x] Ensure no coverage loss after consolidation
+- [x] Update test count in CLAUDE.md
 
 ## Acceptance Criteria
-- [ ] No duplicate test cases across files
-- [ ] All unique test scenarios preserved
-- [ ] Single comprehensive test file per concern (core system, API services, auth, etc.)
-- [ ] Total test count stable or improved after cleanup
+- [x] No duplicate test cases across files
+- [x] All unique test scenarios preserved
+- [x] Single comprehensive test file per concern (core system, API services, auth, etc.)
+- [x] Total test count stable or improved after cleanup

@@ -925,6 +925,17 @@ class TestEscalate:
         assert isinstance(summary, str)
         assert len(summary) > 10
 
+    @pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
+    def test_turkish_escalation_message(self):
+        """E6: Turkish language → transfer message in Turkish."""
+        from agent.nodes.escalate import escalate
+        result = escalate(make_state(
+            language="tr",
+            messages=[HumanMessage(content="Operator ile gorusmek istiyorum")],
+        ))
+        msg = result["messages"][-1].content.lower()
+        assert "operator" in msg or "bagliyorum" in msg or "yetki" in msg
+
 
 # ===================================================================
 # 11. GRAPH ROUTING — deterministic routing tests
@@ -1231,6 +1242,18 @@ class TestSSEProxy:
         data = json.loads(chunk.replace("data: ", "").strip())
         tc = data["choices"][0]["delta"]["tool_calls"][0]
         assert tc["function"]["name"] == "transfer_to_number"
+
+    def test_sse_stream_starts_with_role(self):
+        """First SSE chunk has role=assistant."""
+        r = self.client.post("/v1/chat/completions", json={
+            "messages": [{"role": "user", "content": "Hello"}],
+            "stream": True,
+            "elevenlabs_extra_body": {"conversation_id": "test-role-1"},
+        })
+        lines = [l for l in r.text.split("\n") if l.startswith("data:") and l != "data: [DONE]"]
+        assert len(lines) >= 1
+        first = json.loads(lines[0].replace("data: ", ""))
+        assert first["choices"][0]["delta"].get("role") == "assistant"
 
 
 # ===================================================================
