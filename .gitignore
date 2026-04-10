@@ -31,3 +31,6 @@ logs/
 *.parquet
 *.db
 data/last_system_prompt.txt
+
+# Private docs
+docs/demo_script.md

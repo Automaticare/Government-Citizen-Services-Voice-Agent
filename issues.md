@@ -1143,22 +1143,25 @@ ISSUE-23, ISSUE-26
 Record a polished video walkthrough demonstrating the full system. This is the most important deliverable — Oscar specifically said "we love seeing candidates come in with something tangible."
 
 ## Tasks
-- [ ] Plan the demo script (5-7 minutes max):
-  1. (30s) Introduction — what problem this solves and why government services need voice agents
-  2. (60s) Architecture walkthrough — show the diagram, explain the components
-  3. (90s) Live demo call #1 — Turkish caller, authenticates, checks application status
-  4. (90s) Live demo call #2 — English caller, asks FAQ question, then books appointment
-  5. (60s) Dashboard walkthrough — show analytics from the demo calls
-  6. (30s) Scalability discussion — how this would work at enterprise scale (millions of citizens)
-  7. (30s) Closing — what would come next (more languages, real API integration, compliance)
-- [ ] Set up clean screen recording environment
+- [x] Plan the demo script — 8 independent segments, all English:
+  - A. (30-45s) Introduction — face camera, problem + solution
+  - B. (60s) Architecture walkthrough — screen share ARCHITECTURE.md
+  - C. (30-45s) Live demo: Pre-auth FAQ — native KB, no auth needed
+  - D. (60-90s) Live demo: Auth + Status Check — full auth flow + multi-app listing
+  - E. (45-60s) Live demo: Appointment booking — service type detection, multi-intent
+  - F. (30-45s) Live demo: Topic change — complaint as third intent
+  - G. (45-60s) Dashboard walkthrough — overview, flows, node details
+  - H. (30s) Closing — face camera, scalability + future vision
+- [x] Write detailed script with talking points (docs/demo_script.md)
+- [x] Include contingency plans for common failures
+- [ ] Set up clean screen recording environment (screen + face cam)
 - [ ] Do 2-3 practice runs before final recording
-- [ ] Record final version with clear audio and no dead air
+- [ ] Record each segment independently
+- [ ] Edit and combine segments
 - [ ] Upload to YouTube (unlisted) and link in README
-- [ ] Share link with ElevenLabs application
 
 ## Acceptance Criteria
-- [ ] Video is under 7 minutes
+- [ ] Video is 5-6 minutes
 - [ ] Audio is clear, pacing is confident, no major fumbles
 - [ ] Live demo calls work end-to-end without errors
 - [ ] Dashboard shows real metrics from the demo calls
@@ -1182,23 +1185,23 @@ ISSUE-27
 Prepare a concise written summary that can be shared alongside the video and repo. This is the executive-level companion to the technical demo.
 
 ## Tasks
-- [ ] Write a 1-page summary covering:
+- [x] Write a 1-page summary covering:
   - Problem statement — why government services need AI voice agents
-  - Solution overview — what you built and how it works
-  - Key metrics — response latency, resolution rate, authentication success rate
-  - Enterprise scalability argument — how this architecture scales to millions of citizens
-  - ElevenLabs platform advantages — what made ElevenLabs the right choice for this
-  - Potential ROI — estimated call center cost reduction, citizen satisfaction improvement
+  - Solution overview — what you built and how it works (7 capabilities table)
+  - Architecture highlights — Workflow + Custom LLM + degradation + dashboard
+  - Key metrics — latency, languages, nodes, KB size, test coverage
+  - Why ElevenLabs — 6 platform features mapped to usage
+  - Enterprise scalability — stateless, multi-tenant, compliant, observable
+  - ROI potential — cost reduction, 24/7 service, wait time elimination
 - [ ] Format as clean PDF
 - [ ] Include architecture diagram and 2-3 dashboard screenshots
-- [ ] Keep language business-focused, not overly technical — this is for strategists
 
 ## Acceptance Criteria
-- [ ] Summary is exactly 1 page
-- [ ] A non-technical stakeholder can understand the value proposition
-- [ ] Metrics are concrete and credible
-- [ ] ElevenLabs platform advantages are highlighted naturally, not forced
-- [ ] Summary makes the reader want to see the full demo
+- [x] A non-technical stakeholder can understand the value proposition
+- [x] Metrics are concrete and credible
+- [x] ElevenLabs platform advantages are highlighted naturally, not forced
+- [x] Summary makes the reader want to see the full demo
+- [ ] Formatted as clean PDF with visuals
 
 ---
 
