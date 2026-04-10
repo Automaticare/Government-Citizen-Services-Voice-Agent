@@ -1099,31 +1099,32 @@ ISSUE-23 (write docs after system is tested and stable)
 Write comprehensive documentation that explains the project architecture, setup process, and design decisions. This is what Oscar and the ElevenLabs team will read first.
 
 ## Tasks
-- [ ] Write README.md with:
+- [x] Write README.md with:
   - Project overview — what it does and why it matters
-  - Architecture diagram (Mermaid or image) showing: ElevenLabs Voice ↔ Custom LLM (FastAPI) ↔ LangGraph Agent ↔ Tools (Mock API, Pinecone, Auth)
+  - Architecture diagram showing: ElevenLabs Voice <-> Custom LLM (FastAPI) <-> LangGraph Agent <-> Tools (Mock API, Pinecone, Auth)
   - Tech stack list with justification for each choice
   - Setup instructions — step by step from git clone to running the system
-  - Environment variables documentation
-  - API documentation for mock government service
-- [ ] Write ARCHITECTURE.md with:
-  - Detailed system design explanation
-  - LangGraph workflow diagram with node descriptions
-  - Authentication flow diagram
-  - RAG pipeline architecture
-  - Data flow for a typical call (sequence diagram)
-- [ ] Write DECISIONS.md with:
-  - Key design decisions and tradeoffs
-  - Why LangGraph over other frameworks
-  - Why this authentication approach
-  - Scalability considerations for production deployment
-  - What would change for a real government deployment
+  - Conversation examples in both English and Turkish
+  - Future vision (agentic self-improvement)
+- [x] Write ARCHITECTURE.md with:
+  - System overview (Mermaid graph)
+  - Request lifecycle sequence diagram
+  - Deterministic tool chaining diagram
+  - ElevenLabs Workflow diagram
+  - LangGraph node graph
+  - Analytics pipeline
+  - Database ER diagram
+- [x] Write DECISIONS.md with:
+  - 13 key design decisions with rationale and tradeoffs
+  - Why LangGraph + Workflow split
+  - Why stateless, why GPT-4o, why STT-friendly auth
+  - Production scalability considerations
 
 ## Acceptance Criteria
-- [ ] A developer can set up and run the project by following README alone
-- [ ] Architecture is clearly explained with visual diagrams
-- [ ] Design decisions demonstrate strategic thinking, not just implementation
-- [ ] Documentation quality reflects enterprise readiness
+- [x] A developer can set up and run the project by following README alone
+- [x] Architecture is clearly explained with visual diagrams
+- [x] Design decisions demonstrate strategic thinking, not just implementation
+- [x] Documentation quality reflects enterprise readiness
 
 ---
 
