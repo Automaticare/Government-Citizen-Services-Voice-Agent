@@ -152,6 +152,8 @@ The visual routing layer that handles authentication and high-level service sele
 ```mermaid
 graph TD
     START[Start] --> CI[Collect Identity<br/>GPT-4o-mini + Native KB]
+    CI -->|FAQ question| KB[(ElevenLabs<br/>Native Knowledge Base)]
+    KB -->|Answer without auth| CI
     CI -->|Credentials collected| DT[Dispatch Tool<br/>POST /auth/verify/webhook]
     DT -->|200 Success| SR[Service Router<br/>GPT-4o]
     DT -->|401 Failure| AR[Auth Retry<br/>GPT-4o-mini]
@@ -165,6 +167,7 @@ graph TD
     SR -->|End| END[End Call]
 
     style CI fill:#2196F3,color:#fff
+    style KB fill:#00BCD4,color:#fff
     style DT fill:#FF9800,color:#fff
     style SR fill:#2196F3,color:#fff
     style AR fill:#f44336,color:#fff
@@ -174,7 +177,7 @@ graph TD
     style CMP fill:#9C27B0,color:#fff
 ```
 
-**Key insight:** Workflow handles deterministic routing (auth yes/no). LangGraph handles intelligent routing (which service, tool chaining, RAG).
+**Key insight:** Pre-auth FAQ uses ElevenLabs native KB (zero latency, no server round-trip). Post-auth services use Custom LLM / LangGraph (deterministic tool chaining, RAG). Workflow handles deterministic auth routing (yes/no), LangGraph handles intelligent service routing.
 
 ## LangGraph Node Graph
 
