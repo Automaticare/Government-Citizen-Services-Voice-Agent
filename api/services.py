@@ -408,6 +408,39 @@ def request_document(request: DocumentRequestCreate, db: Session = Depends(get_d
     )
 
 
+@router.delete("/citizens/{citizen_id}")
+def delete_citizen_data(citizen_id: int, db: Session = Depends(get_db)):
+    """GDPR Article 17 — Right to erasure.
+
+    Deletes all data associated with a citizen: personal record,
+    applications, appointments, document requests, and conversation logs.
+    Auth audit logs are retained (they contain only hashed identifiers).
+    """
+    from api.models import ConversationLog
+
+    citizen = db.query(Citizen).filter(Citizen.id == citizen_id).first()
+    if not citizen:
+        raise HTTPException(status_code=404, detail="Citizen not found")
+
+    # Delete all related records
+    deleted = {
+        "document_requests": db.query(DocumentRequest).filter(DocumentRequest.citizen_id == citizen_id).delete(),
+        "appointments": db.query(Appointment).filter(Appointment.citizen_id == citizen_id).delete(),
+        "applications": db.query(Application).filter(Application.citizen_id == citizen_id).delete(),
+        "conversation_logs": db.query(ConversationLog).filter(ConversationLog.citizen_id == citizen_id).delete(),
+    }
+    db.delete(citizen)
+    db.commit()
+
+    logger.info(f"GDPR erasure | citizen_id={citizen_id} | deleted={deleted}")
+
+    return {
+        "message": "All citizen data has been permanently deleted",
+        "citizen_id": citizen_id,
+        "deleted_records": deleted,
+    }
+
+
 @router.get("/services", response_model=list[ServiceInfo])
 def list_services():
     """Return catalog of available government services."""

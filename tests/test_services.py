@@ -204,3 +204,23 @@ class TestServicesCatalog:
         passport = [s for s in r.json() if s["id"] == "passport"][0]
         assert general["requires_auth"] is False
         assert passport["requires_auth"] is True
+
+
+class TestGDPRErasure:
+    """Test DELETE /citizens/{citizen_id} — GDPR Article 17."""
+
+    def test_delete_citizen_removes_all_data(self):
+        # Citizen 2 (Fatma) exists in test DB
+        r = client.delete("/citizens/2")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["citizen_id"] == 2
+        assert "deleted_records" in data
+
+        # Verify citizen is gone
+        r2 = client.get("/applications/2024-TR-0002")
+        assert r2.status_code == 404
+
+    def test_delete_nonexistent_citizen_404(self):
+        r = client.delete("/citizens/99999")
+        assert r.status_code == 404
