@@ -4,7 +4,7 @@ An AI-powered multilingual voice agent that enables citizens to access governmen
 
 ## The Problem
 
-Government call centers worldwide face the same challenges: long wait times, limited operating hours, language barriers, and high operational costs. Citizens often need simple information — application status, appointment availability, required documents — but end up waiting 20+ minutes to speak with a human agent who handles the same repetitive queries hundreds of times a day.
+Government call centers are overwhelmed. The US Social Security Administration handles **93.5 million calls per year** with average wait times reaching **99 minutes** ([ssa.gov](https://www.ssa.gov/data/800-number-call-volume-and-agent-busy-rate.html)). UK's HMRC receives over **38 million calls annually** with only 71.5% answered ([gov.uk](https://www.gov.uk/government/publications/hmrc-annual-report-and-accounts-2024-to-2025)). The US federal government spent **$4 billion on call center contracts** over five years ([GAO-20-291](https://www.gao.gov/products/gao-20-291)). The vast majority of these calls are routine — application status, appointment scheduling, document requests — interactions that don't require human judgment but keep citizens waiting.
 
 ## The Solution
 
@@ -249,6 +249,10 @@ Vatandas: Baska bir sey yok, tesekkurler.
 Ajan:     Rica ederim, iyi gunler!
 ```
 
+## Market Context
+
+Gartner predicts conversational AI will reduce contact center agent labor costs by **$80 billion in 2026** ([gartner.com](https://www.gartner.com/en/newsroom/press-releases/2022-08-31-gartner-predicts-conversational-ai-will-reduce-contac)). ElevenLabs signed an MoU with Ukraine's Ministry of Digital Transformation (September 2025) to integrate voice AI into the Diia government portal — serving **21+ million users** with **1.6 billion backend transactions** ([kmu.gov.ua](https://www.kmu.gov.ua/en/news/trembita-zdijsnila-ponad-16-mlrd-tranzakcij-mizh-derzhreyestrami)). Turkey's e-Devlet gateway serves **66.75 million registered users** (96% of population aged 15+) with **4.23 billion logins per year** ([turkiye.gov.tr](https://www.turkiye.gov.tr/edevlet-istatistikleri)) — voice AI is the natural next layer on top of this digital infrastructure.
+
 ## Enterprise Scalability Considerations
 
 This is a demo, but the architecture is designed with production deployment in mind:
@@ -257,7 +261,7 @@ This is a demo, but the architecture is designed with production deployment in m
 - **Horizontal scaling** — FastAPI backend and LangGraph agent are stateless per-request, can scale behind a load balancer
 - **Knowledge base updates** — re-indexing pipeline allows document updates without downtime
 - **Multi-tenant architecture** — the same system can serve multiple government agencies with isolated knowledge bases and authentication backends
-- **Compliance** — KVKK-compliant authentication flow, PII redaction in all logs, SHA-256 hashed credentials, audit trail
+- **Compliance** — CORS policy, security headers (OWASP), rate limiting, GDPR right to erasure, PII redaction, SHA-256 hashed credentials, audit trail. ElevenLabs platform holds SOC 2 Type II, ISO 27001, HIPAA, and GDPR certifications ([elevenlabs.io](https://compliance.elevenlabs.io/))
 - **Observability** — ConversationLog tracks intent, timing, RAG scores, tool chains, and API calls per request
 
 ## What This Demonstrates
