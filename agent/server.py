@@ -97,12 +97,22 @@ def _cb_status() -> dict:
 
 
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["60/minute"],  # Global: 60 requests/min per IP
+)
 
 app = FastAPI(
     title="Citizen Services Custom LLM",
     version="0.1.0",
     description="LangGraph agent exposed as OpenAI-compatible Custom LLM for ElevenLabs.",
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # --- Security middleware ---
 
