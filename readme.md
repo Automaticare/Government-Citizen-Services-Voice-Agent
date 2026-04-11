@@ -4,7 +4,11 @@ An AI-powered multilingual voice agent that enables citizens to access governmen
 
 ## The Problem
 
-Government call centers are overwhelmed. The US Social Security Administration handles **93.5 million calls per year** with average wait times reaching **99 minutes** ([ssa.gov](https://www.ssa.gov/data/800-number-call-volume-and-agent-busy-rate.html)). UK's HMRC receives over **38 million calls annually** with only 71.5% answered ([gov.uk](https://www.gov.uk/government/publications/hmrc-annual-report-and-accounts-2024-to-2025)). The US federal government spent **$4 billion on call center contracts** over five years ([GAO-20-291](https://www.gao.gov/products/gao-20-291)). The vast majority of these calls are routine — application status, appointment scheduling, document requests — interactions that don't require human judgment but keep citizens waiting.
+Government call centers are overwhelmed. The US Social Security Administration handles **93.5 million calls per year** with average wait times reaching **99 minutes** ([ssa.gov](https://www.ssa.gov/data/800-number-call-volume-and-agent-busy-rate.html)). UK's HMRC receives over **38 million calls annually** with only 71.5% answered ([gov.uk](https://www.gov.uk/government/publications/hmrc-annual-report-and-accounts-2024-to-2025)). The US federal government spent **$4 billion on call center contracts** over five years ([GAO-20-291](https://www.gao.gov/products/gao-20-291)).
+
+When governments try to automate, they typically deploy IVR systems — "press 1 for passport, press 2 for ID card." Citizens hate these. The moment someone realizes they're talking to a recorded menu, they stop trying to solve their problem and start mashing buttons to reach a human operator. The frustration compounds the wait time problem rather than solving it.
+
+The missing piece isn't automation — it's **conversational** automation. An agent that understands natural speech, responds intelligently, and actually resolves the issue instead of routing through a decision tree.
 
 ## The Solution
 

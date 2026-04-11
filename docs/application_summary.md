@@ -2,9 +2,11 @@
 
 ## The Problem
 
-Government call centers are overwhelmed. The US Social Security Administration alone handles **93.5 million calls per year** with average wait times reaching **99 minutes** (SSA FY2025, ssa.gov). UK's HMRC receives over **38 million calls annually** with only 71.5% answered (HMRC Annual Report 2024-25, gov.uk). Turkey's CiMER citizen communication platform processes **4.5 million applications per year** (iletisim.gov.tr, 2024). The US federal government spent **$4 billion on call center contracts** over five years (GAO-20-291).
+Government call centers are overwhelmed. The US Social Security Administration handles **93.5 million calls per year** with average wait times reaching **99 minutes** (SSA FY2025, ssa.gov). UK's HMRC receives over **38 million calls annually** with only 71.5% answered (HMRC Annual Report 2024-25, gov.uk). Turkey's CiMER processes **4.5 million applications per year** (iletisim.gov.tr, 2024). The US federal government spent **$4 billion on call center contracts** over five years (GAO-20-291).
 
-The vast majority of these interactions are routine — application status, appointment scheduling, document requests. They don't require human judgment, but citizens wait in line for them anyway.
+When governments try to automate, they deploy IVR systems — "press 1 for passport, press 2 for ID card." Citizens hate these. The moment someone realizes they're talking to a recorded menu, they stop trying to solve their problem and start pressing zero to reach a human. The automation makes the experience worse, not better.
+
+The missing piece isn't automation — it's **conversational** automation that people actually want to use.
 
 ## The Solution
 
