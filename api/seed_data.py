@@ -165,10 +165,22 @@ SEED_APPLICATIONS = [
 
 
 def seed(reset: bool = False):
-    """Populate the database with sample citizen records."""
+    """Populate the database with sample citizen records.
+
+    --reset only clears seed data tables (Citizen, Application, Appointment,
+    DocumentRequest). Analytics tables (ConversationLog, AuthAuditLog) are
+    preserved to retain conversation history and dashboard data.
+    """
     if reset:
-        Base.metadata.drop_all(engine)
-        print("Dropped all tables.")
+        db = SessionLocal()
+        db.query(DocumentRequest).delete()
+        db.query(Appointment).delete()
+        db.query(Application).delete()
+        db.query(Citizen).delete()
+        db.commit()
+        db.close()
+        print("Cleared seed data tables (citizens, applications, appointments, document_requests).")
+        print("Analytics tables (conversation_logs, auth_audit_log) preserved.")
 
     init_db()
     print("Tables created.")
@@ -218,17 +230,19 @@ def seed(reset: bool = False):
 
         print(f"Seeded {len(SEED_APPLICATIONS)} applications ({len([a for a in SEED_APPLICATIONS if a[0] in (0, 2, 5)])} citizens with multiple).")
 
-        # Seed sample appointments
+        # Seed sample appointments — dynamic dates (always in the future)
+        from datetime import date, timedelta
+        base = date.today() + timedelta(days=1)
         appointments = [
-            Appointment(citizen_id=citizens[0].id, service_type="passport", appointment_date="2026-04-07",
+            Appointment(citizen_id=citizens[0].id, service_type="passport", appointment_date=str(base),
                        appointment_time="10:00", office="Kadikoy Nufus Mudurlugu"),
-            Appointment(citizen_id=citizens[1].id, service_type="id_card", appointment_date="2026-04-08",
+            Appointment(citizen_id=citizens[1].id, service_type="id_card", appointment_date=str(base + timedelta(days=1)),
                        appointment_time="14:00", office="Uskudar Nufus Mudurlugu"),
-            Appointment(citizen_id=citizens[2].id, service_type="driver_license", appointment_date="2026-04-09",
+            Appointment(citizen_id=citizens[2].id, service_type="driver_license", appointment_date=str(base + timedelta(days=2)),
                        appointment_time="09:00", office="Besiktas Nufus Mudurlugu"),
-            Appointment(citizen_id=citizens[0].id, service_type="id_card", appointment_date="2026-03-15",
+            Appointment(citizen_id=citizens[0].id, service_type="id_card", appointment_date=str(base - timedelta(days=30)),
                        appointment_time="11:00", office="Kadikoy Nufus Mudurlugu", status="completed"),
-            Appointment(citizen_id=citizens[4].id, service_type="passport", appointment_date="2026-04-10",
+            Appointment(citizen_id=citizens[4].id, service_type="passport", appointment_date=str(base + timedelta(days=3)),
                        appointment_time="15:00", office="Bakirkoy Nufus Mudurlugu"),
         ]
         db.add_all(appointments)

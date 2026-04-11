@@ -74,17 +74,23 @@ class TestListCitizenApplications:
 class TestAppointmentBooking:
     """Test POST /appointments and GET /appointments/{citizen_id}."""
 
+    def _future_date(self, days_ahead=1):
+        """Return a future date string for testing."""
+        from datetime import date, timedelta
+        return str(date.today() + timedelta(days=days_ahead))
+
     def test_book_appointment(self):
+        future = self._future_date(1)
         r = client.post("/appointments", json={
             "citizen_id": 1,
             "service_type": "passport",
-            "preferred_date": "2026-04-07",
+            "preferred_date": future,
         })
         assert r.status_code == 200
         data = r.json()
         assert data["status"] == "confirmed"
         assert data["office"] != ""
-        assert data["appointment_date"] == "2026-04-07"
+        assert data["appointment_date"] == future
 
     def test_book_without_preferred_date(self):
         r = client.post("/appointments", json={
@@ -95,19 +101,20 @@ class TestAppointmentBooking:
         assert r.status_code == 200
 
     def test_unknown_citizen_404(self):
+        future = self._future_date(1)
         r = client.post("/appointments", json={
             "citizen_id": 99999,
             "service_type": "passport",
-            "preferred_date": "2026-04-07",
+            "preferred_date": future,
         })
         assert r.status_code == 404
 
     def test_get_appointments(self):
-        # Book one first
+        future = self._future_date(1)
         client.post("/appointments", json={
             "citizen_id": 1,
             "service_type": "passport",
-            "preferred_date": "2026-04-07",
+            "preferred_date": future,
         })
         r = client.get("/appointments/1")
         assert r.status_code == 200
@@ -128,17 +135,18 @@ class TestAppointmentBooking:
         assert "past" in r.json()["detail"].lower()
 
     def test_duplicate_appointment_rejected(self):
+        future = self._future_date(2)
         # Book first
         client.post("/appointments", json={
             "citizen_id": 2,
             "service_type": "id_card",
-            "preferred_date": "2026-04-08",
+            "preferred_date": future,
         })
         # Try same again
         r = client.post("/appointments", json={
             "citizen_id": 2,
             "service_type": "id_card",
-            "preferred_date": "2026-04-08",
+            "preferred_date": future,
         })
         assert r.status_code == 409
         assert "already" in r.json()["detail"].lower()

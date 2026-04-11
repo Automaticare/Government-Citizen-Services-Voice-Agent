@@ -107,22 +107,26 @@ SERVICES_CATALOG = [
     ),
 ]
 
-# Mock available slots for appointment booking
-AVAILABLE_SLOTS = {
-    "Kadikoy Nufus Mudurlugu": [
-        ("2026-04-07", "10:00"), ("2026-04-07", "14:00"),
-        ("2026-04-08", "09:00"), ("2026-04-08", "11:00"),
-    ],
-    "Uskudar Nufus Mudurlugu": [
-        ("2026-04-08", "10:00"), ("2026-04-09", "14:00"),
-    ],
-    "Besiktas Nufus Mudurlugu": [
-        ("2026-04-09", "09:00"), ("2026-04-10", "11:00"),
-    ],
-    "Bakirkoy Nufus Mudurlugu": [
-        ("2026-04-10", "10:00"), ("2026-04-10", "15:00"),
-    ],
-}
+# Mock available slots — generated dynamically from today's date
+def _generate_available_slots() -> dict[str, list[tuple[str, str]]]:
+    """Generate appointment slots starting from tomorrow, always in the future."""
+    from datetime import date, timedelta
+    base = date.today() + timedelta(days=1)
+    return {
+        "Kadikoy Nufus Mudurlugu": [
+            (str(base), "10:00"), (str(base), "14:00"),
+            (str(base + timedelta(days=1)), "09:00"), (str(base + timedelta(days=1)), "11:00"),
+        ],
+        "Uskudar Nufus Mudurlugu": [
+            (str(base + timedelta(days=1)), "10:00"), (str(base + timedelta(days=2)), "14:00"),
+        ],
+        "Besiktas Nufus Mudurlugu": [
+            (str(base + timedelta(days=2)), "09:00"), (str(base + timedelta(days=3)), "11:00"),
+        ],
+        "Bakirkoy Nufus Mudurlugu": [
+            (str(base + timedelta(days=3)), "10:00"), (str(base + timedelta(days=3)), "15:00"),
+        ],
+    }
 
 ESTIMATED_COMPLETION = {
     "pending": "15-20 is gunu",
@@ -232,7 +236,7 @@ def book_appointment(request: AppointmentRequest, db: Session = Depends(get_db))
     office = None
     date = None
     time = None
-    for office_name, slots in AVAILABLE_SLOTS.items():
+    for office_name, slots in _generate_available_slots().items():
         for slot_date, slot_time in slots:
             if request.preferred_date and slot_date != request.preferred_date:
                 continue

@@ -87,7 +87,7 @@ def _book_via_api(citizen_id: int, service_type: str, preferred_date: str | None
         payload = {
             "citizen_id": citizen_id,
             "service_type": service_type,
-            "preferred_date": preferred_date or "2026-04-07",
+            "preferred_date": preferred_date,
         }
         r = httpx.post(f"{API_BASE}/appointments", json=payload, timeout=5.0)
         if r.status_code == 200:
