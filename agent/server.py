@@ -96,11 +96,43 @@ def _cb_status() -> dict:
     return {"level": 0, "label": "healthy", "failures": _cb_failures}
 
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(
     title="Citizen Services Custom LLM",
     version="0.1.0",
     description="LangGraph agent exposed as OpenAI-compatible Custom LLM for ElevenLabs.",
 )
+
+# --- Security middleware ---
+
+# CORS — restrict to ElevenLabs and local development
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://elevenlabs.io",
+        "https://api.elevenlabs.io",
+        "http://localhost:3000",
+        "http://localhost:8080",
+    ],
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["*"],
+    allow_credentials=False,
+)
+
+
+@app.middleware("http")
+async def security_headers(request, call_next):
+    """Add security headers to every response (SOC2 / OWASP best practices)."""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
 
 # Mount government API routers on the same server.
 # Single port = single ngrok tunnel = ElevenLabs can reach both
