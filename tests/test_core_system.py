@@ -327,6 +327,11 @@ class TestAppointmentBook:
         import agent.nodes.appointment_book as ab
         monkeypatch.setattr(ab, "_book_via_api", lambda *a, **k: (None, "service_unavailable"))
         monkeypatch.setattr(ab, "_fetch_appointments", lambda cid: [])
+        monkeypatch.setattr(ab, "_fetch_available_slots", lambda svc: [
+            {"office": "Kadikoy Office", "date": "2026-05-01", "time": "10:00"},
+            {"office": "Kadikoy Office", "date": "2026-05-01", "time": "14:00"},
+            {"office": "Uskudar Office", "date": "2026-05-02", "time": "09:00"},
+        ])
 
     def test_unauthenticated_asks_for_verification(self):
         """E1: No profile → asks for identity verification."""
@@ -345,29 +350,45 @@ class TestAppointmentBook:
         msg = result["messages"][-1].content.lower()
         assert "which service" in msg or "passport" in msg
 
-    def test_service_type_detected_books_successfully(self, monkeypatch):
-        """E3: Service type detected + API success → confirmation."""
-        import agent.nodes.appointment_book as ab
-        monkeypatch.setattr(ab, "_book_via_api", lambda *a, **k: (
-            {"appointment_date": "2026-04-07", "appointment_time": "10:00",
-             "office": "Kadikoy Office"}, None
-        ))
+    def test_service_type_detected_offers_slots(self):
+        """E3: Service type detected → lists available slots (not completed yet)."""
         from agent.nodes.appointment_book import appointment_book
         result = appointment_book(make_state(
             auth_status="authenticated", citizen_profile=PROFILE_SINGLE_APP,
             messages=[HumanMessage(content="I want a passport appointment")],
         ))
         msg = result["messages"][-1].content.lower()
-        assert "booked" in msg
-        assert "2026-04-07" in msg or "kadikoy" in msg.lower()
+        assert "option" in msg
+        assert "which" in msg or "prefer" in msg
+        # Should NOT be completed — waiting for user selection
+        assert "appointment_book" not in result.get("completed_intents", [])
+
+    def test_user_selects_slot_books_successfully(self, monkeypatch):
+        """E4: User selects a slot → books and confirms."""
+        import agent.nodes.appointment_book as ab
+        monkeypatch.setattr(ab, "_book_via_api", lambda *a, **k: (
+            {"appointment_date": "2026-05-01", "appointment_time": "10:00",
+             "office": "Kadikoy Office"}, None
+        ))
+        from agent.nodes.appointment_book import appointment_book
+        result = appointment_book(make_state(
+            auth_status="authenticated", citizen_profile=PROFILE_SINGLE_APP,
+            messages=[
+                HumanMessage(content="I want a passport appointment"),
+                AIMessage(content="Here are the available passport slots. Option 1: 2026-05-01 at 10:00, Kadikoy Office. Option 2: 2026-05-01 at 14:00. Which one would you prefer?"),
+                HumanMessage(content="The first one"),
+            ],
+        ))
+        msg = result["messages"][-1].content.lower()
+        assert "confirmed" in msg
         assert "appointment_book" in result["completed_intents"]
 
     def test_conflict_existing_appointment(self, monkeypatch):
-        """E4: Existing confirmed appointment for same service → informs conflict."""
+        """E5: Existing confirmed appointment for same service → informs conflict."""
         import agent.nodes.appointment_book as ab
         monkeypatch.setattr(ab, "_fetch_appointments", lambda cid: [
             {"service_type": "passport", "status": "confirmed",
-             "appointment_date": "2026-04-07", "appointment_time": "10:00"}
+             "appointment_date": "2026-05-01", "appointment_time": "10:00"}
         ])
         from agent.nodes.appointment_book import appointment_book
         result = appointment_book(make_state(
@@ -379,28 +400,16 @@ class TestAppointmentBook:
         assert "appointment_book" in result["completed_intents"]
 
     def test_no_available_slots(self, monkeypatch):
-        """E5: No available slots → informs no slots."""
+        """E6: No available slots → informs no slots."""
         import agent.nodes.appointment_book as ab
-        monkeypatch.setattr(ab, "_book_via_api", lambda *a, **k: (None, "No available slots"))
+        monkeypatch.setattr(ab, "_fetch_available_slots", lambda svc: [])
         from agent.nodes.appointment_book import appointment_book
         result = appointment_book(make_state(
             auth_status="authenticated", citizen_profile=PROFILE_SINGLE_APP,
             messages=[HumanMessage(content="I need a passport appointment")],
         ))
         msg = result["messages"][-1].content.lower()
-        assert "no available" in msg or "different date" in msg
-
-    def test_api_error_fallback(self, monkeypatch):
-        """E6: API error → try again later message."""
-        import agent.nodes.appointment_book as ab
-        monkeypatch.setattr(ab, "_book_via_api", lambda *a, **k: (None, "service_unavailable"))
-        from agent.nodes.appointment_book import appointment_book
-        result = appointment_book(make_state(
-            auth_status="authenticated", citizen_profile=PROFILE_SINGLE_APP,
-            messages=[HumanMessage(content="I need a passport appointment")],
-        ))
-        msg = result["messages"][-1].content.lower()
-        assert "try again" in msg or "alo 181" in msg.lower()
+        assert "no available" in msg or "try again" in msg
 
     def test_service_type_detection_from_context(self):
         """Verify service type is correctly detected from message keywords."""

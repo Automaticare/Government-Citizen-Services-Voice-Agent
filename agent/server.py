@@ -373,6 +373,13 @@ async def chat_completions(request: ChatCompletionRequest):
 
         yield sse_chunk(response_id, {"role": "assistant"})
 
+        # Buffer words — give TTS something to say while LangGraph processes.
+        # Prevents dead air during the 2-5 second graph execution.
+        if auth_status == "authenticated" and not _cb_is_open():
+            import asyncio
+            yield sse_chunk(response_id, {"content": "Let me check that for you. "})
+            await asyncio.sleep(0.05)
+
         if _cb_is_open():
             # Level 1 degradation: bypass LangGraph, direct OpenAI call
             logger.warning(f"Circuit breaker open — using Level 1 fallback | conv={conversation_id}")

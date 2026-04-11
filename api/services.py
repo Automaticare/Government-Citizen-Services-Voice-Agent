@@ -128,6 +128,23 @@ def _generate_available_slots() -> dict[str, list[tuple[str, str]]]:
         ],
     }
 
+class SlotResponse(BaseModel):
+    office: str
+    date: str
+    time: str
+
+
+@router.get("/appointments/slots/{service_type}", response_model=list[SlotResponse])
+def get_available_slots(service_type: str):
+    """Return available appointment slots for a service type."""
+    slots = []
+    for office, office_slots in _generate_available_slots().items():
+        for slot_date, slot_time in office_slots:
+            slots.append(SlotResponse(office=office, date=slot_date, time=slot_time))
+    # Return first 3 slots to keep voice response short
+    return slots[:3]
+
+
 ESTIMATED_COMPLETION = {
     "pending": "15-20 is gunu",
     "in_review": "5-10 is gunu",

@@ -1,9 +1,15 @@
 """
 Appointment booking node.
 
-Asks the citizen which service type they need, checks for existing
-appointments, then calls the government API to book.
-Detects service type from conversation context when possible.
+Multi-turn flow:
+1. Detect service type from conversation (or ask)
+2. Check for existing appointment conflicts
+3. Fetch available slots and present options
+4. User selects a slot → book it
+
+Uses the same pattern as status_check multi-app listing:
+- Turn 1: list slots (don't mark completed → LangGraph returns here)
+- Turn 2: user selects → book and mark completed
 """
 
 import httpx
@@ -44,6 +50,13 @@ SERVICE_TYPES = {
     },
 }
 
+# Slot selection keywords
+SLOT_KEYWORDS = {
+    "1": 0, "one": 0, "first": 0, "bir": 0, "ilk": 0, "birinci": 0,
+    "2": 1, "two": 1, "second": 1, "iki": 1, "ikinci": 1,
+    "3": 2, "three": 2, "third": 2, "uc": 2, "ucuncu": 2,
+}
+
 
 def _normalize(text: str) -> str:
     """Normalize Turkish characters for matching."""
@@ -81,6 +94,17 @@ def _fetch_appointments(citizen_id: int) -> list[dict]:
         return []
 
 
+def _fetch_available_slots(service_type: str) -> list[dict]:
+    """Fetch available appointment slots from API."""
+    try:
+        r = httpx.get(f"{API_BASE}/appointments/slots/{service_type}", timeout=5.0)
+        if r.status_code == 200:
+            return r.json()
+        return []
+    except httpx.RequestError:
+        return []
+
+
 def _book_via_api(citizen_id: int, service_type: str, preferred_date: str | None) -> tuple[dict | None, str | None]:
     """Call government API to book appointment."""
     try:
@@ -105,8 +129,42 @@ def _book_via_api(citizen_id: int, service_type: str, preferred_date: str | None
         return None, "service_unavailable"
 
 
+def _detect_slot_selection(messages: list, slots: list[dict]) -> dict | None:
+    """Check if user's last message selects one of the offered slots."""
+    last_msg = ""
+    for m in reversed(messages):
+        if isinstance(m, HumanMessage) or getattr(m, "type", "") == "human":
+            last_msg = _normalize(m.content)
+            break
+
+    if not last_msg or not slots:
+        return None
+
+    # Check for number/ordinal keywords ("first", "1", "second", etc.)
+    for keyword, idx in SLOT_KEYWORDS.items():
+        if keyword in last_msg and idx < len(slots):
+            return slots[idx]
+
+    # Check for date/office keywords in the message
+    for slot in slots:
+        if slot["date"] in last_msg or _normalize(slot["office"]) in last_msg:
+            return slot
+
+    return None
+
+
+def _slots_were_offered(messages: list) -> bool:
+    """Check if slots were already listed in a previous turn."""
+    for m in reversed(messages):
+        if isinstance(m, AIMessage) or getattr(m, "type", "") == "ai":
+            content = m.content.lower()
+            if "option" in content and ("which" in content or "hangisi" in content):
+                return True
+    return False
+
+
 def appointment_book(state: AgentState) -> dict:
-    """Book an appointment — detect service type, check conflicts, book."""
+    """Book an appointment with slot selection flow."""
     profile = state.get("citizen_profile")
     language = state.get("language", "tr")
     messages = state.get("messages", [])
@@ -140,8 +198,10 @@ def appointment_book(state: AgentState) -> dict:
     svc_name = SERVICE_TYPES[service_type]["tr" if language != "en" else "en"]
 
     # Check for existing appointment conflict
+    _api_calls = 0
     if citizen_id:
         existing = _fetch_appointments(citizen_id)
+        _api_calls += 1
         conflicts = [a for a in existing
                      if a.get("service_type") == service_type and a.get("status") == "confirmed"]
         if conflicts:
@@ -158,49 +218,81 @@ def appointment_book(state: AgentState) -> dict:
                 "messages": [AIMessage(content=msg)],
                 "completed_intents": mark_completed(state, "appointment_book"),
                 "service_node_name": "appointment_book",
-                "api_calls_count": 1,
+                "api_calls_count": _api_calls,
             }
 
-    # Book the appointment
-    result, error = _book_via_api(citizen_id, service_type, None)
+    # Fetch available slots
+    slots = _fetch_available_slots(service_type)
+    _api_calls += 1
 
-    if result:
-        date = result.get("appointment_date", "")
-        time = result.get("appointment_time", "")
-        office = result.get("office", "")
-
+    if not slots:
         if language == "en":
-            msg = (f"{first_name}, your {svc_name} appointment has been booked. "
-                   f"Date: {date}, Time: {time}, Location: {office}. "
-                   f"Please bring your ID card and any required documents.")
-        else:
-            msg = (f"{first_name}, {svc_name} randevunuz olusturuldu. "
-                   f"Tarih: {date}, Saat: {time}, Yer: {office}. "
-                   f"Lutfen nufus cuzdaninizi ve gerekli belgeleri yaninizda getirin.")
-    elif error and "no available" in error.lower():
-        if language == "en":
-            msg = (f"{first_name}, there are no available {svc_name} slots. "
-                   f"Would you like to try a different date?")
-        else:
-            msg = (f"{first_name}, {svc_name} icin musait randevu yok. "
-                   f"Baska bir tarih denemek ister misiniz?")
-    else:
-        if language == "en":
-            msg = (f"{first_name}, I wasn't able to book your {svc_name} appointment right now. "
+            msg = (f"{first_name}, there are no available {svc_name} slots right now. "
                    f"Please try again later or contact us at ALO 181.")
         else:
-            msg = (f"{first_name}, su anda {svc_name} randevunuzu olusturamadim. "
+            msg = (f"{first_name}, su anda {svc_name} icin musait randevu yok. "
                    f"Lutfen daha sonra tekrar deneyin veya ALO 181'i arayin.")
+        return {
+            "messages": [AIMessage(content=msg)],
+            "completed_intents": mark_completed(state, "appointment_book"),
+            "service_node_name": "appointment_book",
+            "api_calls_count": _api_calls,
+        }
 
-    _api_calls = 1  # _book_via_api
-    if citizen_id:
-        _api_calls += 1  # _fetch_appointments for conflict check
+    # Check if user is selecting from previously offered slots
+    if _slots_were_offered(messages):
+        selected = _detect_slot_selection(messages, slots)
+        if selected:
+            result, error = _book_via_api(citizen_id, service_type, selected["date"])
+            _api_calls += 1
 
-    logger.info(f"Appointment booking | citizen_id={citizen_id} | type={service_type} | success={bool(result)}")
+            if result:
+                date = result.get("appointment_date", "")
+                time_str = result.get("appointment_time", "")
+                office = result.get("office", "")
 
+                if language == "en":
+                    msg = (f"{first_name}, your {svc_name} appointment has been confirmed. "
+                           f"Date: {date}, Time: {time_str}, Location: {office}. "
+                           f"Please bring your ID card and any required documents.")
+                else:
+                    msg = (f"{first_name}, {svc_name} randevunuz onaylandi. "
+                           f"Tarih: {date}, Saat: {time_str}, Yer: {office}. "
+                           f"Lutfen nufus cuzdaninizi ve gerekli belgeleri yaninizda getirin.")
+            else:
+                if language == "en":
+                    msg = (f"{first_name}, I wasn't able to book that slot. "
+                           f"Please try again later or contact us at ALO 181.")
+                else:
+                    msg = (f"{first_name}, bu slotu rezerve edemedim. "
+                           f"Lutfen daha sonra tekrar deneyin veya ALO 181'i arayin.")
+
+            logger.info(f"Appointment booked | citizen_id={citizen_id} | type={service_type} | slot={selected} | success={bool(result)}")
+
+            return {
+                "messages": [AIMessage(content=msg)],
+                "completed_intents": mark_completed(state, "appointment_book"),
+                "service_node_name": "appointment_book",
+                "api_calls_count": _api_calls,
+            }
+
+    # First turn: present available slots — don't mark completed so we come back
+    if language == "en":
+        msg = f"{first_name}, here are the available {svc_name} slots. "
+        for i, slot in enumerate(slots, 1):
+            msg += f"Option {i}: {slot['date']} at {slot['time']}, {slot['office']}. "
+        msg += "Which one would you prefer?"
+    else:
+        msg = f"{first_name}, {svc_name} icin musait randevular. "
+        for i, slot in enumerate(slots, 1):
+            msg += f"Secenek {i}: {slot['date']} saat {slot['time']}, {slot['office']}. "
+        msg += "Hangisini tercih edersiniz?"
+
+    logger.info(f"Appointment slots offered | citizen_id={citizen_id} | type={service_type} | count={len(slots)}")
+
+    # Don't mark completed — user needs to select
     return {
         "messages": [AIMessage(content=msg)],
-        "completed_intents": mark_completed(state, "appointment_book"),
         "service_node_name": "appointment_book",
         "api_calls_count": _api_calls,
     }
