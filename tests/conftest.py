@@ -11,7 +11,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from api.models import Application, Base, Citizen, AuthAuditLog, get_db
+from api.models import Application, Base, Citizen, AuthAuditLog, Office, get_db
 from api.server import app
 from api.seed_data import generate_valid_tc, hash_tc
 
@@ -63,6 +63,18 @@ def setup_test_db():
             citizen_id=fatma.id, application_ref="2024-TR-0002",
             service_type="id_card", status="approved",
         ),
+    ])
+
+    # Seed offices for appointment slot tests
+    db.add_all([
+        Office(name="Kadikoy Nufus Mudurlugu", city="Istanbul",
+               services="passport,id_card", open_time="09:00", close_time="17:00", slot_duration_min=60),
+        Office(name="Uskudar Nufus Mudurlugu", city="Istanbul",
+               services="id_card,civil_registry", open_time="09:00", close_time="17:00", slot_duration_min=60),
+        Office(name="Besiktas Nufus Mudurlugu", city="Istanbul",
+               services="driver_license,passport", open_time="08:00", close_time="16:00", slot_duration_min=60),
+        Office(name="Bakirkoy Nufus Mudurlugu", city="Istanbul",
+               services="civil_registry,driver_license", open_time="09:00", close_time="17:00", slot_duration_min=60),
     ])
     db.commit()
     db.close()

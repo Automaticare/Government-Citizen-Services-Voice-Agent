@@ -133,6 +133,20 @@ class ConversationLog(Base):
     api_calls_count = Column(Integer, nullable=True)  # number of API calls made by node
 
 
+class Office(Base):
+    """Government service offices with working hours and supported services."""
+
+    __tablename__ = "offices"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String, nullable=False, unique=True)
+    city = Column(String, nullable=False, default="Istanbul")
+    services = Column(String, nullable=False)  # Comma-separated: "passport,id_card"
+    open_time = Column(String, nullable=False, default="09:00")  # HH:MM
+    close_time = Column(String, nullable=False, default="17:00")  # HH:MM
+    slot_duration_min = Column(Integer, nullable=False, default=60)  # Minutes per slot
+
+
 def init_db():
     """Create all tables if they don't exist."""
     Base.metadata.create_all(engine)

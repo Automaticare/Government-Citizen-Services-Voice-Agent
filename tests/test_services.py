@@ -75,9 +75,12 @@ class TestAppointmentBooking:
     """Test POST /appointments and GET /appointments/{citizen_id}."""
 
     def _future_date(self, days_ahead=1):
-        """Return a future date string for testing."""
+        """Return a future business day string for testing (skips weekends)."""
         from datetime import date, timedelta
-        return str(date.today() + timedelta(days=days_ahead))
+        d = date.today() + timedelta(days=days_ahead)
+        while d.weekday() >= 5:  # Skip Saturday/Sunday
+            d += timedelta(days=1)
+        return str(d)
 
     def test_book_appointment(self):
         future = self._future_date(1)

@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from agent.logging_config import get_logger
-from api.models import Application, Appointment, Citizen, DocumentRequest, get_db
+from api.models import Application, Appointment, Citizen, DocumentRequest, Office, get_db
 
 logger = get_logger(__name__)
 
@@ -107,42 +107,72 @@ SERVICES_CATALOG = [
     ),
 ]
 
-# Mock available slots — generated dynamically from today's date
-def _generate_available_slots() -> dict[str, list[tuple[str, str]]]:
-    """Generate appointment slots starting from tomorrow, always in the future."""
-    from datetime import date, timedelta
-    base = date.today() + timedelta(days=1)
-    return {
-        "Kadikoy Nufus Mudurlugu": [
-            (str(base), "10:00"), (str(base), "14:00"),
-            (str(base + timedelta(days=1)), "09:00"), (str(base + timedelta(days=1)), "11:00"),
-        ],
-        "Uskudar Nufus Mudurlugu": [
-            (str(base + timedelta(days=1)), "10:00"), (str(base + timedelta(days=2)), "14:00"),
-        ],
-        "Besiktas Nufus Mudurlugu": [
-            (str(base + timedelta(days=2)), "09:00"), (str(base + timedelta(days=3)), "11:00"),
-        ],
-        "Bakirkoy Nufus Mudurlugu": [
-            (str(base + timedelta(days=3)), "10:00"), (str(base + timedelta(days=3)), "15:00"),
-        ],
-    }
-
 class SlotResponse(BaseModel):
     office: str
     date: str
     time: str
 
 
-@router.get("/appointments/slots/{service_type}", response_model=list[SlotResponse])
-def get_available_slots(service_type: str):
-    """Return available appointment slots for a service type."""
+def _generate_slots_for_office(
+    office: Office, service_type: str, booked: set[tuple[str, str, str]], days_ahead: int = 7,
+) -> list[SlotResponse]:
+    """Generate available slots for an office, excluding booked ones.
+
+    Generates 1-hour slots within office working hours for the next N business days.
+    Skips weekends and already-booked (office, date, time) combinations.
+    """
+    from datetime import date, timedelta
+
+    if service_type not in office.services.split(","):
+        return []
+
+    open_h, open_m = map(int, office.open_time.split(":"))
+    close_h, close_m = map(int, office.close_time.split(":"))
+    duration = office.slot_duration_min
+
     slots = []
-    for office, office_slots in _generate_available_slots().items():
-        for slot_date, slot_time in office_slots:
-            slots.append(SlotResponse(office=office, date=slot_date, time=slot_time))
-    # Return first 3 slots to keep voice response short
-    return slots[:3]
+    current = date.today() + timedelta(days=1)
+    days_counted = 0
+
+    while days_counted < days_ahead:
+        if current.weekday() < 5:  # Skip weekends
+            days_counted += 1
+            hour, minute = open_h, open_m
+            while hour < close_h or (hour == close_h and minute < close_m):
+                time_str = f"{hour:02d}:{minute:02d}"
+                date_str = str(current)
+
+                if (office.name, date_str, time_str) not in booked:
+                    slots.append(SlotResponse(office=office.name, date=date_str, time=time_str))
+
+                minute += duration
+                if minute >= 60:
+                    hour += minute // 60
+                    minute = minute % 60
+
+        current += timedelta(days=1)
+
+    return slots
+
+
+@router.get("/appointments/slots/{service_type}", response_model=list[SlotResponse])
+def get_available_slots(service_type: str, db: Session = Depends(get_db)):
+    """Return available appointment slots for a service type.
+
+    Queries offices from DB, generates slots from working hours,
+    filters out booked ones. Returns first 3 for voice-friendly output.
+    """
+    offices = db.query(Office).all()
+
+    confirmed = db.query(Appointment).filter(Appointment.status == "confirmed").all()
+    booked = {(a.office, a.appointment_date, a.appointment_time) for a in confirmed}
+
+    all_slots = []
+    for office in offices:
+        all_slots.extend(_generate_slots_for_office(office, service_type, booked))
+
+    all_slots.sort(key=lambda s: (s.date, s.time))
+    return all_slots[:3]
 
 
 ESTIMATED_COMPLETION = {
@@ -249,23 +279,27 @@ def book_appointment(request: AppointmentRequest, db: Session = Depends(get_db))
                 detail=f"You already have a {request.service_type} appointment on {request.preferred_date} at {existing.appointment_time}."
             )
 
-    # Find first available slot
-    office = None
-    date = None
-    time = None
-    for office_name, slots in _generate_available_slots().items():
-        for slot_date, slot_time in slots:
-            if request.preferred_date and slot_date != request.preferred_date:
-                continue
-            office = office_name
-            date = slot_date
-            time = slot_time
-            break
-        if office:
-            break
+    # Find first available slot from DB offices
+    confirmed = db.query(Appointment).filter(Appointment.status == "confirmed").all()
+    booked = {(a.office, a.appointment_date, a.appointment_time) for a in confirmed}
 
-    if not office:
+    offices = db.query(Office).all()
+    all_slots = []
+    for ofc in offices:
+        all_slots.extend(_generate_slots_for_office(ofc, request.service_type, booked))
+    all_slots.sort(key=lambda s: (s.date, s.time))
+
+    # Filter by preferred date if specified
+    if request.preferred_date:
+        all_slots = [s for s in all_slots if s.date == request.preferred_date]
+
+    if not all_slots:
         raise HTTPException(status_code=409, detail="No available appointment slots for the requested date. Please try a different date.")
+
+    chosen = all_slots[0]
+    office = chosen.office
+    date = chosen.date
+    time = chosen.time
 
     appointment = Appointment(
         citizen_id=request.citizen_id,

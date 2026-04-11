@@ -11,7 +11,7 @@ TC Kimlik numbers use valid checksums. All PII is fictional.
 import argparse
 import hashlib
 
-from api.models import Base, Citizen, Application, Appointment, DocumentRequest, SessionLocal, engine, init_db
+from api.models import Base, Citizen, Application, Appointment, DocumentRequest, Office, SessionLocal, engine, init_db
 
 
 def hash_tc(tc_kimlik: str) -> str:
@@ -177,9 +177,10 @@ def seed(reset: bool = False):
         db.query(Appointment).delete()
         db.query(Application).delete()
         db.query(Citizen).delete()
+        db.query(Office).delete()
         db.commit()
         db.close()
-        print("Cleared seed data tables (citizens, applications, appointments, document_requests).")
+        print("Cleared seed data tables (citizens, applications, appointments, document_requests, offices).")
         print("Analytics tables (conversation_logs, auth_audit_log) preserved.")
 
     init_db()
@@ -229,6 +230,21 @@ def seed(reset: bool = False):
             db.add(app)
 
         print(f"Seeded {len(SEED_APPLICATIONS)} applications ({len([a for a in SEED_APPLICATIONS if a[0] in (0, 2, 5)])} citizens with multiple).")
+
+        # Seed offices
+        offices = [
+            Office(name="Kadikoy Nufus Mudurlugu", city="Istanbul",
+                   services="passport,id_card", open_time="09:00", close_time="17:00", slot_duration_min=60),
+            Office(name="Uskudar Nufus Mudurlugu", city="Istanbul",
+                   services="id_card,civil_registry", open_time="09:00", close_time="17:00", slot_duration_min=60),
+            Office(name="Besiktas Nufus Mudurlugu", city="Istanbul",
+                   services="driver_license,passport", open_time="08:00", close_time="16:00", slot_duration_min=60),
+            Office(name="Bakirkoy Nufus Mudurlugu", city="Istanbul",
+                   services="civil_registry,driver_license", open_time="09:00", close_time="17:00", slot_duration_min=60),
+        ]
+        db.add_all(offices)
+        db.flush()
+        print(f"Seeded {len(offices)} offices.")
 
         # Seed sample appointments — dynamic dates (always in the future)
         from datetime import date, timedelta
