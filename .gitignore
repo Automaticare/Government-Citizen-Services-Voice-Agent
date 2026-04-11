@@ -34,3 +34,6 @@ data/last_system_prompt.txt
 
 # Private docs
 docs/demo_script.md
+
+# External documentation (not ours)
+elevenlabs_documentations/
