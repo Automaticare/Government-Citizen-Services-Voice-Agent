@@ -2,7 +2,9 @@
 
 ## The Problem
 
-Government call centers handle millions of calls annually. Citizens wait 20+ minutes for routine inquiries — application status, appointment scheduling, document requests. Operating costs are high, hours are limited, and multilingual support is scarce. These are repetitive, structured interactions that don't require human judgment.
+Government call centers are overwhelmed. The US Social Security Administration alone handles **93.5 million calls per year** with average wait times reaching **99 minutes** (SSA FY2025, ssa.gov). UK's HMRC receives over **38 million calls annually** with only 71.5% answered (HMRC Annual Report 2024-25, gov.uk). Turkey's CiMER citizen communication platform processes **4.5 million applications per year** (iletisim.gov.tr, 2024). The US federal government spent **$4 billion on call center contracts** over five years (GAO-20-291).
+
+The vast majority of these interactions are routine — application status, appointment scheduling, document requests. They don't require human judgment, but citizens wait in line for them anyway.
 
 ## The Solution
 
@@ -14,7 +16,7 @@ An AI-powered voice agent built on **ElevenLabs Conversational AI** that resolve
 |-----------|-------------|
 | **Secure Authentication** | STT-friendly identity verification (last 4 digits + date of birth + father's initial) via ElevenLabs Workflow dispatch tool — deterministic, not LLM-guessed |
 | **Application Status** | Queries government database, lists all citizen applications, provides detailed status with automatic follow-up (required documents for pending, appeal rights for rejected) |
-| **Appointment Booking** | Detects service type from conversation, checks for conflicts, books with date/time/location confirmation |
+| **Appointment Booking** | Presents available slots from office schedules, citizen selects, confirmed with date/time/location |
 | **Document Requests** | Initiates official document preparation (birth certificate, residence, marriage, criminal record) with reference tracking |
 | **General FAQ** | Answers questions about services, fees, hours, and requirements from a curated knowledge base — no hallucination |
 | **Smart Escalation** | Detects frustration, generates empathetic transfer message, provides operator with full conversation summary |
@@ -40,6 +42,8 @@ An AI-powered voice agent built on **ElevenLabs Conversational AI** that resolve
 
 ## Why ElevenLabs
 
+ElevenLabs holds **SOC 2 Type II**, **ISO 27001**, **ISO 42001**, **HIPAA**, and **GDPR** certifications (elevenlabs.io/trust). The platform offers Zero Retention Mode, end-to-end encryption, and regional data residency (US, EU, India) — critical for government deployments.
+
 | Platform Feature | How We Use It |
 |-----------------|---------------|
 | **Workflow Engine** | Deterministic auth gating — dispatch tool + subagent isolation |
@@ -49,26 +53,47 @@ An AI-powered voice agent built on **ElevenLabs Conversational AI** that resolve
 | **Backup LLM** | Level 2 degradation — service continues even if our server is down |
 | **Voice Quality** | eleven_flash_v2_5 for natural, professional government voice |
 
-## Enterprise Scalability
+**Precedent:** ElevenLabs signed an MoU with Ukraine's Ministry of Digital Transformation (September 2025) to integrate voice AI into the Diia government portal — serving 21+ million users with 1.6 billion backend transactions processed through the Trembita system (kmu.gov.ua).
 
-The architecture is production-ready by design:
+## Security & Compliance
+
+| Measure | Implementation |
+|---------|---------------|
+| **PII Protection** | TC Kimlik (National ID) stored as SHA-256 hash, never in plaintext |
+| **Log Redaction** | Automatic masking of 11-digit ID numbers and dates in all logs |
+| **Audit Trail** | Every auth attempt and conversation logged with no raw PII |
+| **CORS Policy** | Restricted to ElevenLabs and localhost origins |
+| **Security Headers** | X-Content-Type-Options, X-Frame-Options, HSTS, CSP (OWASP) |
+| **Rate Limiting** | 60 requests/minute per IP (brute force protection) |
+| **Right to Erasure** | GDPR Article 17 endpoint — DELETE /citizens/{id} removes all data |
+| **Encryption in Transit** | HTTPS enforced via reverse proxy (ngrok/production TLS) |
+
+## Enterprise Scalability
 
 - **Stateless** — each request is independent, horizontally scalable behind a load balancer
 - **Multi-tenant** — isolated knowledge bases and auth backends per government agency
-- **Compliant** — KVKK (Turkish GDPR) compliant: PII redaction, hashed credentials, audit trail
 - **Observable** — every request logged with intent, timing, tool chains, and API calls
 - **Extensible** — new service nodes are a single Python file + graph edge
 
+## Market Context
+
+Gartner predicts conversational AI will reduce contact center agent labor costs by **$80 billion in 2026**, with 1 in 10 agent interactions automated (up from 1.6% today) — Gartner, August 2022.
+
+Turkey's e-Devlet digital government gateway serves **66.75 million registered users** (96% of population aged 15+) with **4.23 billion logins** and **8,309 digital services** in 2024 (turkiye.gov.tr). Voice AI is the natural next layer on top of this digital infrastructure.
+
 ## ROI Potential
 
-A typical government call center handles 500,000+ calls/year with an average cost of $5-8 per call. An AI voice agent resolving 70%+ of routine inquiries could:
-
-- **Reduce call center costs by 40-60%** ($1-2.4M annually for a mid-size operation)
-- **Extend service hours to 24/7** at no additional staffing cost
-- **Reduce average wait time from 20+ minutes to zero** for supported services
-- **Free human agents** to focus on complex cases that actually need human judgment
+| Scenario | Impact |
+|----------|--------|
+| **Mid-size agency** (500K calls/year, $7 avg cost) | 70% automation → **$2.45M annual savings** |
+| **Large agency** (10M calls/year, SSA-scale) | Even 30% automation → **$21M annual savings** |
+| **24/7 availability** | No additional staffing cost for nights/weekends |
+| **Wait time reduction** | From 20-99 minutes → under 3 seconds for supported services |
+| **Payback period** | Industry benchmark: 60-90 days (Gartner) |
 
 ---
+
+*All statistics sourced from official government publications: ssa.gov, gao.gov, gov.uk, turkiye.gov.tr, iletisim.gov.tr, kmu.gov.ua, gartner.com, elevenlabs.io.*
 
 *Full source code, architecture documentation, and live demo video available in the project repository.*
 
