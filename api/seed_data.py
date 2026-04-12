@@ -63,8 +63,8 @@ SEED_CITIZENS = [
 # citizen_index is 0-based index into SEED_CITIZENS
 SEED_APPLICATIONS = [
     # Ahmet — 2 applications
-    (0, "2024-TR-0001", "passport", "in_review",
-     "Application under review. Biometric verification completed.",
+    (0, "2024-TR-0001", "passport", "additional_docs_needed",
+     "Missing national ID copy and a recent photo taken within the last six months.",
      "2024-11-15", "2025-03-20", "Kadikoy Nufus Mudurlugu"),
     (0, "2024-TR-0024", "id_card", "approved",
      "ID card printed. Please visit the office for pickup.",

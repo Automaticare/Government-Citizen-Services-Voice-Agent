@@ -104,8 +104,9 @@ def _build_detail_message(app: dict, first_name: str, language: str) -> str:
     svc_name = SERVICE_NAMES_TR.get(service, service) if language != "en" else SERVICE_NAMES_EN.get(service, service)
 
     if status == "additional_docs_needed":
-        rag_query = "required documents for application" if language == "en" else "basvuru icin gerekli belgeler"
-        docs_context = _rag_lookup(rag_query, language)
+        svc_en = SERVICE_NAMES_EN.get(service, service)
+        rag_query = f"required documents for {svc_en} application" if language == "en" else f"{SERVICE_NAMES_TR.get(service, service)} basvurusu icin gerekli belgeler"
+        docs_context = _rag_lookup(rag_query, language, category=service if service else None)
         logger.info(f"Tool chain: status=additional_docs_needed -> RAG docs lookup (found={bool(docs_context)})")
 
         if language == "en":
