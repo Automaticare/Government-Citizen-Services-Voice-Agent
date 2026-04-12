@@ -176,11 +176,11 @@ def get_available_slots(service_type: str, db: Session = Depends(get_db)):
 
 
 ESTIMATED_COMPLETION = {
-    "pending": "15-20 is gunu",
-    "in_review": "5-10 is gunu",
-    "approved": "Tamamlandi",
-    "rejected": "Reddedildi",
-    "additional_docs_needed": "Ek belge bekleniyor",
+    "pending": "15-20 business days",
+    "in_review": "5-10 business days",
+    "approved": "Completed",
+    "rejected": "Rejected",
+    "additional_docs_needed": "Awaiting additional documents",
 }
 
 
