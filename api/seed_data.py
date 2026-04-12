@@ -64,92 +64,92 @@ SEED_CITIZENS = [
 SEED_APPLICATIONS = [
     # Ahmet — 2 applications
     (0, "2024-TR-0001", "passport", "in_review",
-     "Basvuru inceleme asamasinda. Biyometrik dogrulama tamamlandi.",
+     "Application under review. Biometric verification completed.",
      "2024-11-15", "2025-03-20", "Kadikoy Nufus Mudurlugu"),
     (0, "2024-TR-0024", "id_card", "approved",
-     "Kimlik karti basildi. Teslim icin ofise basvurunuz.",
+     "ID card printed. Please visit the office for pickup.",
      "2024-09-10", "2025-02-28", "Kadikoy Nufus Mudurlugu"),
     # Fatma — 1 application
     (1, "2024-TR-0002", "id_card", "approved",
-     "Kimlik karti hazir. Nufus mudurlugunden teslim alinabilir.",
+     "ID card ready. Available for pickup at the registry office.",
      "2024-10-05", "2025-01-15", "Uskudar Nufus Mudurlugu"),
     # Mehmet — 2 applications
     (2, "2024-TR-0003", "driver_license", "pending",
-     "Basvuru alindi. Sinav tarihi belirlenmedi.",
+     "Application received. Exam date not yet scheduled.",
      "2025-03-01", "2025-03-01", "Besiktas Nufus Mudurlugu"),
     (2, "2024-TR-0025", "passport", "rejected",
-     "Fotograf gereksinimleri karsilanmadi. Yeniden basvuru yapilabilir.",
+     "Photo requirements not met. You may reapply.",
      "2024-08-20", "2025-01-10", "Besiktas Nufus Mudurlugu"),
     # Ayse — 1 application
     (3, "2024-TR-0004", "civil_registry", "rejected",
-     "Eksik evrak nedeniyle reddedildi. Itiraz suresi otuz gun.",
+     "Rejected due to missing documents. You have thirty days to appeal.",
      "2024-07-15", "2025-02-01", "Bakirkoy Nufus Mudurlugu"),
     # Mustafa — 1 application
     (4, "2024-TR-0005", "passport", "in_review",
-     "Guvenlik kontrolu devam ediyor.",
+     "Security verification in progress.",
      "2025-01-20", "2025-03-15", "Bakirkoy Nufus Mudurlugu"),
     # Emine — 2 applications
     (5, "2024-TR-0006", "id_card", "approved",
-     "Kimlik karti hazir. En yakin nufus mudurlugunden teslim alinabilir.",
+     "ID card ready. Available for pickup at your nearest registry office.",
      "2024-06-10", "2024-12-20", "Uskudar Nufus Mudurlugu"),
     (5, "2024-TR-0026", "civil_registry", "pending",
-     "Dogum belgesi basvurusu isleme alindi.",
+     "Birth certificate application is being processed.",
      "2025-03-10", "2025-03-10", "Uskudar Nufus Mudurlugu"),
     # Huseyin — 1 application
     (6, "2024-TR-0007", "passport", "additional_docs_needed",
-     "Nufus cuzdani fotokopisi ve son alti aylik fotograf eksik.",
+     "Missing national ID copy and a recent photo taken within the last six months.",
      "2024-12-01", "2025-03-25", "Kadikoy Nufus Mudurlugu"),
     # Zeynep — 1 application
     (7, "2024-TR-0008", "driver_license", "pending",
-     "Ehliyet sinav basvurusu alindi. Sinav takvimi bekleniyor.",
+     "Driver's license exam application received. Waiting for exam schedule.",
      "2025-02-15", "2025-02-15", "Besiktas Nufus Mudurlugu"),
     # Ali — 1 application
     (8, "2024-TR-0009", "id_card", "in_review",
-     "Kimlik karti yenileme basvurusu inceleniyor.",
+     "ID card renewal application under review.",
      "2025-02-01", "2025-03-18", "Kadikoy Nufus Mudurlugu"),
     # Hatice — 1 application
     (9, "2024-TR-0010", "passport", "approved",
-     "Pasaport basildi. Kadikoy Nufus Mudurlugunden teslim alinabilir.",
+     "Passport printed. Available for pickup at Kadikoy Office.",
      "2024-05-20", "2024-11-30", "Kadikoy Nufus Mudurlugu"),
     # Ibrahim — 1 application
     (10, "2024-TR-0011", "civil_registry", "pending",
-     "Ikametgah belgesi basvurusu isleme alindi.",
+     "Residence certificate application is being processed.",
      "2025-03-20", "2025-03-20", "Bakirkoy Nufus Mudurlugu"),
     # Meryem — 1 application
     (11, "2024-TR-0012", "driver_license", "in_review",
-     "Ehliyet sinav sonuclari degerlendirilmektedir.",
+     "Driver's license exam results are being evaluated.",
      "2025-01-10", "2025-03-22", "Uskudar Nufus Mudurlugu"),
     # Hasan — 1 application
     (12, "2024-TR-0013", "id_card", "approved",
-     "Kimlik karti hazir. Besiktas Nufus Mudurlugunden teslim alinabilir.",
+     "ID card ready. Available for pickup at Besiktas Office.",
      "2024-08-15", "2025-01-05", "Besiktas Nufus Mudurlugu"),
     # Elif — 1 application
     (13, "2024-TR-0014", "passport", "rejected",
-     "Harclik odemesi tamamlanmamis. Odeme sonrasi yeniden basvuru yapilabilir.",
+     "Processing fee not completed. You may reapply after payment.",
      "2024-09-25", "2025-02-10", "Bakirkoy Nufus Mudurlugu"),
     # Omer — 1 application
     (14, "2024-TR-0015", "driver_license", "additional_docs_needed",
-     "Saglik raporu eksik. Saglik kurulusundan onaylanmis rapor gerekli.",
+     "Missing health report. A certified report from an authorized health institution is required.",
      "2024-11-05", "2025-03-28", "Kadikoy Nufus Mudurlugu"),
     # Sule — 1 application
     (15, "2024-TR-0016", "civil_registry", "pending",
-     "Evlilik cuzdani basvurusu alindi.",
+     "Marriage certificate application received.",
      "2025-03-05", "2025-03-05", "Uskudar Nufus Mudurlugu"),
     # Osman — 1 application
     (16, "2024-TR-0017", "passport", "in_review",
-     "Basvuru degerlendirilmektedir. Ek bilgi talep edilebilir.",
+     "Application is being evaluated. Additional information may be requested.",
      "2025-02-20", "2025-03-30", "Besiktas Nufus Mudurlugu"),
     # Merve — 1 application
     (17, "2024-TR-0018", "id_card", "approved",
-     "Kimlik karti hazir. Bakirkoy Nufus Mudurlugunden teslim alinabilir.",
+     "ID card ready. Available for pickup at Bakirkoy Office.",
      "2024-10-15", "2025-02-25", "Bakirkoy Nufus Mudurlugu"),
     # Yusuf — 1 application
     (18, "2024-TR-0019", "driver_license", "pending",
-     "Ehliyet basvurusu alindi. Evrak kontrolu yapilacak.",
+     "Driver's license application received. Document review pending.",
      "2025-03-15", "2025-03-15", "Kadikoy Nufus Mudurlugu"),
     # Busra — 1 application
     (19, "2024-TR-0020", "passport", "in_review",
-     "Pasaport basvurusu incelemede.",
+     "Passport application under review.",
      "2025-01-25", "2025-03-12", "Uskudar Nufus Mudurlugu"),
     # English citizens
     (20, "2024-EN-0001", "passport", "approved",

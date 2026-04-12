@@ -10,8 +10,10 @@ Speak these to the agent and verify the expected outcomes.
 - ElevenLabs agent active with workflow configured
 
 **Test citizen for auth (use one of these):**
-- Ahmet Yilmaz: last 4 digits "0018", DOB "15 March 1990", father initial "M"
-- John Smith: last 4 digits "0029", DOB "10 February 1985", father initial "R"
+- Ahmet Yilmaz: last 4 digits "0146", DOB "15 March 1990", father initial "M" (2 apps: passport in_review + id_card approved)
+- John Smith: last 4 digits "0252", DOB "10 February 1985", father initial "R" (1 app: passport approved)
+- Ayse Celik: last 4 digits "0464", DOB "30 November 1995", father initial "M" (rejected civil_registry)
+- Huseyin Ozturk: last 4 digits "0782", DOB "25 December 1988", father initial "Y" (additional_docs_needed passport)
 
 ---
 
@@ -66,7 +68,7 @@ Speak these to the agent and verify the expected outcomes.
 > "I want to check my application status"
 
 Agent asks for identity. Provide:
-> "Last four digits are 0018"
+> "Last four digits are 0146"
 > "March 15, 1990"
 > "M"
 
@@ -126,7 +128,7 @@ After successful auth as Ahmet:
 - [ ] Notes/office mentioned if available
 
 ### C3 — Rejected Application (Appeal Guidance)
-*Auth as Ayse (last 4: "0046", DOB: "30 November 1995", father: "M")*
+*Auth as Ayse (last 4: "0464", DOB: "30 November 1995", father: "M")*
 > "Check my application status"
 
 **Expected:** Civil registry application rejected — agent mentions appeal rights (30 days).
@@ -136,7 +138,7 @@ After successful auth as Ahmet:
 - [ ] RAG chain triggered (appeal info from knowledge base)
 
 ### C4 — Additional Documents Needed
-*Auth as Huseyin (last 4: "0074", DOB: "25 December 1988", father: "Y")*
+*Auth as Huseyin (last 4: "0782", DOB: "25 December 1988", father: "Y")*
 > "What's my application status?"
 
 **Expected:** Passport needs additional docs — agent lists required documents (RAG chain).
