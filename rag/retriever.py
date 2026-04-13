@@ -115,3 +115,32 @@ def format_context(results: list[RetrievalResult]) -> str:
         parts.append("")
 
     return "\n".join(parts)
+
+
+def format_context_tts(results: list[RetrievalResult]) -> str:
+    """Format retrieval results for TTS output — no source tags, no formatting.
+
+    Used by service nodes where the response is read aloud.
+    Strips markdown, bullet points, and technical formatting.
+    """
+    if not results:
+        return ""
+
+    import re
+    parts = []
+    for r in results:
+        text = r.text
+        # Strip markdown headers
+        text = re.sub(r'#{1,4}\s+', '', text)
+        # Strip bullet points and list markers
+        text = re.sub(r'^[\-\*]\s+', '', text, flags=re.MULTILINE)
+        # Strip numbered lists
+        text = re.sub(r'^\d+[\.\)]\s+', '', text, flags=re.MULTILINE)
+        # Replace newlines with spaces
+        text = re.sub(r'\n+', ' ', text)
+        # Clean up multiple spaces
+        text = re.sub(r'\s+', ' ', text).strip()
+        if text:
+            parts.append(text)
+
+    return " ".join(parts)

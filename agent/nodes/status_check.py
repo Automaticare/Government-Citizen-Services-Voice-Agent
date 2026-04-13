@@ -20,7 +20,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from agent.state import AgentState
 from agent.logging_config import get_logger
 from agent.nodes.utils import mark_completed, get_honorific
-from rag.retriever import search, format_context
+from rag.retriever import search, format_context_tts
 
 logger = get_logger(__name__)
 
@@ -58,10 +58,10 @@ STATUS_NAMES_EN = {
 
 
 def _rag_lookup(query: str, language: str, category: str | None = None) -> str:
-    """Query RAG for supplementary information."""
+    """Query RAG for supplementary information. Returns TTS-friendly text."""
     results = search(query=query, language=language, category=category, top_k=2)
     if results and results[0].score > 0.3:
-        return format_context(results)
+        return format_context_tts(results)
     return ""
 
 
