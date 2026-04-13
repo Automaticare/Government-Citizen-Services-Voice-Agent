@@ -34,6 +34,8 @@ Analyze the user's latest message and classify their intent into exactly ONE of 
 - escalate: User explicitly wants to speak with a human operator, OR user is angry/abusive/using profanity
 
 Important rules:
+- If the previous assistant message listed options and asked the user to choose (e.g. "Which application?", "Which one would you prefer?"), classify the user's response as the SAME intent that produced the list. For example, if the assistant listed applications and asked which one, and the user says "passport" or "the first one", classify as "status_check" NOT "faq"
+- Same applies to appointment slot selection: if the assistant offered slots and user picks one, classify as "appointment_book"
 - If the user asks about SOMEONE ELSE's application (friend, spouse, parent), classify as "faq" NOT "status_check"
 - If the user mentions a PREVIOUS CALL or prior conversation, classify as "faq" NOT "complaint"
 - If the user is angry or using ACTUAL profanity/swear words, classify as "escalate"
