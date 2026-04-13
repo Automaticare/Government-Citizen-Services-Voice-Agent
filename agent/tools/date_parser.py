@@ -44,6 +44,9 @@ def normalize_date(raw_input: str) -> tuple[str | None, str]:
     """
     text = raw_input.strip().lower()
 
+    # Strip ordinal suffixes: 15th → 15, 1st → 1, 2nd → 2, 3rd → 3
+    text = re.sub(r'(\d+)(st|nd|rd|th)\b', r'\1', text)
+
     # Pattern 1: DD/MM/YYYY or DD.MM.YYYY or DD-MM-YYYY
     numeric_match = re.match(r'(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})', text)
     if numeric_match:
