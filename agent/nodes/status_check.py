@@ -113,10 +113,10 @@ def _build_detail_message(app: dict, first_name: str, language: str) -> str:
             msg = f"{first_name}, your {svc_name} application requires additional documents."
             if notes:
                 msg += f" {notes}"
-            if docs_context:
-                msg += f" Based on our records, you may need: {docs_context}"
             if office:
                 msg += f" Please submit these at {office}."
+            if docs_context:
+                msg += f" For general requirements: {docs_context}"
         else:
             msg = f"{first_name}, {svc_name} basvurunuz ek belge gerektiriyor."
             if notes:

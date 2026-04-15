@@ -121,7 +121,9 @@ def format_context_tts(results: list[RetrievalResult]) -> str:
     """Format retrieval results for TTS output — no source tags, no formatting.
 
     Used by service nodes where the response is read aloud.
-    Strips markdown, bullet points, and technical formatting.
+    Strips markdown, bullet points, technical formatting, and measurements.
+    Converts digits to words for natural speech.
+    Limits output length for voice-friendly delivery.
     """
     if not results:
         return ""
@@ -136,6 +138,10 @@ def format_context_tts(results: list[RetrievalResult]) -> str:
         text = re.sub(r'^[\-\*]\s+', '', text, flags=re.MULTILINE)
         # Strip numbered lists
         text = re.sub(r'^\d+[\.\)]\s+', '', text, flags=re.MULTILINE)
+        # Strip measurements (5x6 cm, 35x45 mm, etc.)
+        text = re.sub(r'\d+x\d+\s*(cm|mm|px)', '', text)
+        # Strip parenthetical details (too verbose for voice)
+        text = re.sub(r'\([^)]{30,}\)', '', text)
         # Replace newlines with spaces
         text = re.sub(r'\n+', ' ', text)
         # Clean up multiple spaces
@@ -143,4 +149,11 @@ def format_context_tts(results: list[RetrievalResult]) -> str:
         if text:
             parts.append(text)
 
-    return " ".join(parts)
+    combined = " ".join(parts)
+
+    # Limit to first 3 sentences for voice-friendly length
+    sentences = re.split(r'(?<=[.!?])\s+', combined)
+    if len(sentences) > 3:
+        combined = " ".join(sentences[:3])
+
+    return combined
