@@ -10,7 +10,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 
 from agent.state import AgentState
 from agent.logging_config import get_logger
-from agent.nodes.utils import mark_completed, get_honorific
+from agent.nodes.utils import mark_completed, get_honorific, format_date_spoken, format_time_spoken
 
 logger = get_logger(__name__)
 
@@ -120,7 +120,7 @@ def appointment_cancel(state: AgentState) -> dict:
                     svc_name = svc_tr if language != "en" else svc_en
                     if language == "en":
                         msg = (f"{first_name}, your {svc_name} appointment on "
-                               f"{a['appointment_date']} at {a['appointment_time']} has been cancelled.")
+                               f"{format_date_spoken(a['appointment_date'])} at {format_time_spoken(a['appointment_time'])} has been cancelled.")
                     else:
                         msg = (f"{first_name}, {a['appointment_date']} tarihli {svc_name} "
                                f"randevunuz iptal edilmistir.")
@@ -144,7 +144,7 @@ def appointment_cancel(state: AgentState) -> dict:
         if success:
             if language == "en":
                 msg = (f"{first_name}, your {svc_name} appointment on "
-                       f"{a['appointment_date']} at {a['appointment_time']} has been cancelled.")
+                       f"{format_date_spoken(a['appointment_date'])} at {format_time_spoken(a['appointment_time'])} has been cancelled.")
             else:
                 msg = (f"{first_name}, {a['appointment_date']} tarihli {svc_name} "
                        f"randevunuz iptal edilmistir.")
@@ -166,7 +166,7 @@ def appointment_cancel(state: AgentState) -> dict:
         msg = f"{first_name}, you have {len(confirmed)} confirmed appointments. "
         for a in confirmed:
             svc_name = SERVICE_NAMES_EN.get(a["service_type"], a["service_type"])
-            msg += f"{svc_name} on {a['appointment_date']} at {a['appointment_time']}. "
+            msg += f"{svc_name} on {format_date_spoken(a['appointment_date'])} at {format_time_spoken(a['appointment_time'])}. "
         msg += "Which one would you like to cancel?"
     else:
         msg = f"{first_name}, {len(confirmed)} onaylanmis randevunuz var. "

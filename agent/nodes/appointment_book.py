@@ -17,7 +17,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 
 from agent.state import AgentState
 from agent.logging_config import get_logger
-from agent.nodes.utils import mark_completed, get_honorific
+from agent.nodes.utils import mark_completed, get_honorific, format_date_spoken, format_time_spoken
 
 logger = get_logger(__name__)
 
@@ -208,7 +208,7 @@ def appointment_book(state: AgentState) -> dict:
             a = conflicts[0]
             if language == "en":
                 msg = (f"{first_name}, you already have a confirmed {svc_name} appointment "
-                       f"on {a['appointment_date']} at {a['appointment_time']}. "
+                       f"on {format_date_spoken(a['appointment_date'])} at {format_time_spoken(a['appointment_time'])}. "
                        f"Would you like to book for a different service?")
             else:
                 msg = (f"{first_name}, {svc_name} icin zaten {a['appointment_date']} tarihinde "
@@ -253,7 +253,7 @@ def appointment_book(state: AgentState) -> dict:
 
                 if language == "en":
                     msg = (f"{first_name}, your {svc_name} appointment has been confirmed. "
-                           f"Date: {date}, Time: {time_str}, Location: {office}. "
+                           f"{format_date_spoken(date)} at {format_time_spoken(time_str)}, {office}. "
                            f"Please bring your ID card and any required documents.")
                 else:
                     msg = (f"{first_name}, {svc_name} randevunuz onaylandi. "
@@ -280,7 +280,7 @@ def appointment_book(state: AgentState) -> dict:
     if language == "en":
         msg = f"{first_name}, here are the available {svc_name} slots. "
         for i, slot in enumerate(slots, 1):
-            msg += f"Option {i}: {slot['date']} at {slot['time']}, {slot['office']}. "
+            msg += f"Option {i}: {format_date_spoken(slot['date'])} at {format_time_spoken(slot['time'])}, {slot['office']}. "
         msg += "Which one would you prefer?"
     else:
         msg = f"{first_name}, {svc_name} icin musait randevular. "

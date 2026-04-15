@@ -9,7 +9,7 @@ from langchain_core.messages import AIMessage
 
 from agent.state import AgentState
 from agent.logging_config import get_logger
-from agent.nodes.utils import mark_completed, get_honorific
+from agent.nodes.utils import mark_completed, get_honorific, format_date_spoken, format_time_spoken
 
 logger = get_logger(__name__)
 
@@ -57,7 +57,7 @@ def appointment_list(state: AgentState) -> dict:
         a = appointments[0]
         if language == "en":
             msg = (f"{first_name}, you have one appointment. "
-                   f"{a['service_type']} on {a['appointment_date']} at {a['appointment_time']}, "
+                   f"{a['service_type']} on {format_date_spoken(a['appointment_date'])} at {format_time_spoken(a['appointment_time'])}, "
                    f"location {a['office']}. Status: {a['status']}.")
         else:
             msg = (f"{first_name}, bir randevunuz var. "
@@ -67,7 +67,7 @@ def appointment_list(state: AgentState) -> dict:
         if language == "en":
             msg = f"{first_name}, you have {len(appointments)} appointments. "
             for a in appointments:
-                msg += f"{a['service_type']} on {a['appointment_date']} at {a['appointment_time']} ({a['status']}). "
+                msg += f"{a['service_type']} on {format_date_spoken(a['appointment_date'])} at {format_time_spoken(a['appointment_time'])} ({a['status']}). "
         else:
             msg = f"{first_name}, {len(appointments)} randevunuz var. "
             for a in appointments:
