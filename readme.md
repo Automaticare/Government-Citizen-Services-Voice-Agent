@@ -6,9 +6,9 @@ An AI-powered multilingual voice agent that enables citizens to access governmen
 
 ### 🎥 Walkthrough
 
-[![Watch the walkthrough](https://img.youtube.com/vi/kSFCPI2FEMs/maxresdefault.jpg)](https://youtu.be/kSFCPI2FEMs)
+**[Watch the walkthrough on YouTube](https://youtu.be/kSFCPI2FEMs)**
 
-A 5-minute end-to-end demo covering call flow, authentication, multi-intent conversations, and the analytics dashboard.
+A 18-minute end-to-end demo covering call flow, authentication, multi-intent conversations, and the analytics dashboard.
 
 ---
 
