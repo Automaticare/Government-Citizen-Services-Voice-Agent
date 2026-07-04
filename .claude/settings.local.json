@@ -16,7 +16,8 @@
       "Bash(python -m agent.deploy --language en)",
       "Bash(python -m pytest tests/test_intent_detection.py -v -s --timeout=300)",
       "Bash(ngrok version:*)",
-      "Bash(python -c \"from elevenlabs.types import ConversationalConfig; import inspect; print\\([x for x in dir\\(ConversationalConfig\\) if not x.startswith\\('_'\\)]\\)\")"
+      "Bash(python -c \"from elevenlabs.types import ConversationalConfig; import inspect; print\\([x for x in dir\\(ConversationalConfig\\) if not x.startswith\\('_'\\)]\\)\")",
+      "mcp__bf7c680d-5fdc-5ef4-b4a0-abadb619bf0a__add_repo"
     ]
   }
 }
